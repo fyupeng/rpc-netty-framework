@@ -47,7 +47,13 @@ public abstract class AbstractRpcServer implements RpcServer {
 
       String basePackage = startClass.getAnnotation(ServiceScan.class).value();
       if ("".equals(basePackage)) {
-         basePackage = mainClassName.substring(0, mainClassName.lastIndexOf("."));
+         // 如果前缀有 包名
+         if(mainClassName.lastIndexOf(".") != -1) {
+            basePackage = mainClassName.substring(0, mainClassName.lastIndexOf("."));
+         // 如果没有 包名
+         } else {
+            basePackage = mainClassName;
+         }
       }
       Set<Class<?>> classSet = ReflectUtil.getClasses(basePackage);
       for (Class<?> clazz : classSet) {
