@@ -1,6 +1,7 @@
 package com.zhkucst.loadbalancer;
 
 import com.alibaba.nacos.api.naming.pojo.Instance;
+import com.zhkucst.exception.RpcException;
 
 import java.util.List;
 
@@ -12,5 +13,5 @@ import java.util.List;
  * @Version: 1.0
  */
 public interface LoadBalancer {
-   Instance select(List<Instance> instances);
+   Instance select(List<Instance> instances) throws RpcException;
 }

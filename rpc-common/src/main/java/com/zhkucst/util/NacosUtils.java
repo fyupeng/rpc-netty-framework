@@ -34,7 +34,7 @@ public class NacosUtils {
         try {
             return NamingFactory.createNamingService(SERVER_ADDR);
         } catch (NacosException e) {
-            log.error("error occurred when connecting to nacos server: ",e);
+            log.error("error occurred when connecting to nacos server: ", e);
             return null;
         }
     }

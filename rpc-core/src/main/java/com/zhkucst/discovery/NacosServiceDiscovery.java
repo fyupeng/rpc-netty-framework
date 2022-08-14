@@ -36,6 +36,9 @@ public class NacosServiceDiscovery implements ServiceDiscovery {
         } catch (NacosException e) {
             log.error("error occurred while fetching the service:{}",e.getMessage());
             throw new ObtainServiceException("error occurred while fetching the service Exception");
+        } catch (RpcException e) {
+            log.error("service instances size is zero, can't provide service! please start server first! Exception: {}",e.getMessage());
+            throw e;
         }
     }
 }

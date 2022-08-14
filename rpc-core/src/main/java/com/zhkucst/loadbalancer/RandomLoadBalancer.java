@@ -1,6 +1,8 @@
 package com.zhkucst.loadbalancer;
 
 import com.alibaba.nacos.api.naming.pojo.Instance;
+import com.zhkucst.exception.RpcException;
+import com.zhkucst.exception.ServiceNotFoundException;
 
 import java.util.List;
 import java.util.Random;
@@ -15,7 +17,10 @@ import java.util.Random;
 public class RandomLoadBalancer implements LoadBalancer{
 
     @Override
-    public Instance select(List<Instance> instances) {
+    public Instance select(List<Instance> instances) throws RpcException {
+        if(instances.size() == 0 ) {
+            throw new ServiceNotFoundException("service instances size is zero, can't provide service! please start server first!");
+        }
         return instances.get(new Random().nextInt(instances.size()));
     }
 
