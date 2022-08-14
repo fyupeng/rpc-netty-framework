@@ -57,6 +57,7 @@ public class RpcMessageChecker {
             String checkCode = new String(DigestUtils.md5(rpcResponse.getData().toString().getBytes("UTF-8")));
             if (checkCode == null || !checkCode.equals(rpcResponse.getCheckCode())) {
                 log.error("data in package is modified， data:{}",rpcResponse.getData());
+                log.error("detail modification information: {}，the modification information has been filtered, and such messages will not be received and consumed！", rpcResponse.getData().toString());
                 throw new ReceiveResponseException("data in package is modified Exception");
             }
         } catch (UnsupportedEncodingException e) {
