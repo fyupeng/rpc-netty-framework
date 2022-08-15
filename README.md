@@ -226,5 +226,8 @@ springboot简单配置如下
 
 抛出异常`Failed to register service Exception`，原因是注册中心没有启动或者注册中心地址端口指定不明。
 
+- NotSuchMethodException
+
+出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0-SNAPSHOT-jar-with-dependenceies.jar`中`org.apache.commons`包
 ### 8. Development Statement
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合
