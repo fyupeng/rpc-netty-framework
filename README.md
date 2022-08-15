@@ -127,7 +127,7 @@ public class MyServer {
 ```
 > 注意：增加注解`com.zhkucst.anotion.Service`和`com.zhkucst.anotion.ServiceScan`才可被自动发现服务扫描并注册到 nacos 
 
-### 5. Start Client
+### 5. Start com.fyupeng.Client
 初始化客户端时连接服务端有两种方式：
 - 直连
 - 使用负载均衡
@@ -165,3 +165,66 @@ logback 重写使用
 </configuration>
 ```
 除此之外，框架还提供了 Socket 方式的 Rpc 服务
+
+### 6. Application scenarios
+
+- 支持 springBoot 集成
+
+为了支持`springBoot`集成`logback`日志，继承`rpc-netty-framework`使用同一套日志，抛弃`nacos-client`内置的`slf4j-api`与`commons-loging`原有`Jar`包，因为该框架会导致在整合`springboot`时，出现重复的日志绑定和日志打印方法的参数兼容问题，使用`jcl-over-slf4j-api`可解决该问题；
+
+在`springboot1.0`和`2.0`版本中，不使用它默认版本的`spring-boot-starter-log4j`,推荐使用`1.3.8.RELEASE`；
+springboot简单配置如下
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter</artifactId>
+        <exclusions>
+            <!-- 排除 springboot 默认的 logback 日志框架 -->
+            <exclusion>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-logging</artifactId>
+            </exclusion>
+            <!-- 排除 springboot 默认的 commons-logging 实现（版本低，出现方法找不到问题） -->
+            <exclusion>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-jcl</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
+    
+    <!-- 与 logback 整合（通过 @Slf4j 注解即可使用） -->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>1.18.10</version>
+    </dependency>
+    <!--引入log4j日志依赖，目的是使用 jcl-over-slf4j 来重写 commons logging 的实现-->
+    <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-log4j</artifactId>
+    <version>1.3.8.RELEASE</version>
+    </dependency>
+</dependencies>
+
+```
+
+
+
+
+### 7. exception resolution
+- ServiceNotFoundException
+
+解决真实服务不存在的情况，导致负载均衡中使用的策略出现异常的情况，修复后会强制抛出`ServiceNotFoundException`，或许大部分情况是服务未启动。当然，推荐真实服务应该在服务启动器的内层包中，同层可能会不起作用。
+
+- ReceiveResponseException
+
+抛出异常`data in package is modified Exception`；
+信息摘要算法的实现，使用的是`String`类型的`equals`方法，所以客户端在编写`Service`接口时，如果返回类型不是八大基本类型 + String 类型，也就是复杂对象类型，那么要重写`toString`方法，不使用`Object`默认的`toString`方法，因为它默认打印信息为`16`位的内存地址，在做校验中，发送的包和请求获取的包是需要重新实例化的，说白了就是深克隆，**必须** 重写`Object`原有`toString`方。
+
+- RegisterFailedException
+
+抛出异常`Failed to register service Exception`，原因是注册中心没有启动或者注册中心地址端口指定不明。
+
+### 8. Development Statement
+有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合
