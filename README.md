@@ -222,6 +222,7 @@ springboot简单配置如下
 
 抛出异常`data in package is modified Exception`；
 信息摘要算法的实现，使用的是`String`类型的`equals`方法，所以客户端在编写`Service`接口时，如果返回类型不是八大基本类型 + String 类型，也就是复杂对象类型，那么要重写`toString`方法，不使用`Object`默认的`toString`方法，因为它默认打印信息为`16`位的内存地址，在做校验中，发送的包和请求获取的包是需要重新实例化的，说白了就是深克隆，**必须** 重写`Object`原有`toString`方法。
+为了避免该情况发生，建议所有`PoJo`类必须重写`toString`方法、所有真实业务方法返回体，必须重写`toString`方法。
 
 - RegisterFailedException
 
@@ -230,5 +231,17 @@ springboot简单配置如下
 - NotSuchMethodException
 
 出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0-SNAPSHOT-jar-with-dependenceies.jar`中`org.apache.commons`包
+
+- DecoderException
+
+抛出异常：`com.esotericsoftware.kryo.KryoException: Class cannot be created (missing no-arg constructor): java.lang.StackTraceElement`，主要是因为`Kryo`序列化和反序列化是通过无参构造反射创建的，所以使用到`Pojo`类，首先必须对其创建无参构造函数，否则将抛出该异常，并且无法正常执行。
+
+- InvocationTargetException
+
+抛出异常：`Serialization trace:stackTrace (java.lang.reflect.InvocationTargetException)`，主要也是反射调用失败，主要原因还是反射执行目标函数失败，缺少相关函数，可能是构造函数或者其他方法参数问题。
+
+
 ### 8. Development Statement
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合
+
+
