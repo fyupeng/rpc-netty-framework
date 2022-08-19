@@ -44,8 +44,17 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
             Object result = requestHandler.handler(msg);
             // 生成 校验码，客户端收到后 会 对 数据包 进行校验
             if (ctx.channel().isActive() && ctx.channel().isWritable()) {
-                result = result == null ? "void" : result;
-                String checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
+                /**
+                 * 这里要分两种情况：
+                 * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
+                 * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
+                 */
+                String checkCode = "";
+                if(result != null) {
+                    checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
+                } else {
+                    checkCode = null;
+                }
                 RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(),checkCode);
                 ChannelFuture future = ctx.writeAndFlush(rpcResponse);
             } else {
