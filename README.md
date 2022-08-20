@@ -1,63 +1,72 @@
 ## Introduction
+A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md)
 ### 1. server
-- 负载均衡策略
-- 序列化策略
-- 自动发现和注销服务
-- 注册中心
+- Load Balancing Strategy
+- Serialization Strategy
+- Automatic Discovery And Logout Of Services
+- Registration Center
 ### 2. Security
-- 心跳机制
-- 信息摘要
+- Heartbeat Mechanism
+- Information Summary
 ### 3. Design Patterns
-- 单例模式
-- 动态代理
-- 静态工厂
-- 建造者
-- 策略模式
-- Future(观察者）
+- Singleton Pattern
+- Dynamic Proxy
+- Static Factory
+- Builder
+- Strategy Mode
+- Future (Observer)
 ## Highlights
 ### 1. Application of Information Digest Algorithm
-对于信息摘要算法的使用，其实并不难，在数据包中添加 `String` 类型的成员变量 `checkCode` 用来防伪的就可以实现。
-- 原理
+The use of the information digest algorithm is actually not difficult. It can be achieved by adding a member variable `checkCode` of type `String` to the data packet for anti-counterfeiting.
 
-发送端把原信息用`HASH`函数加密成摘要,然后把数字摘要和原信息一起发送到接收端,接收端也用HASH函数把原消息加密为摘要,看两个摘要是否相同,若相同,则表明信息的完整.否则不完整。
-- 实现
+- Principle
 
-客户端在发出 请求包，服务端会在该请求包在请求执行的结果的内容转成字节码后，使用 MD5 单向加密成为 唯一的信息摘要（128 比特，16 字节）存储到响应包对应的成员变量 `checkCode` 中，所以客户端拿到响应包后，最有利用价值的地方（请求要执行的结果被改动），那么 `checkCode` 将不能保证一致性，这就是信息摘要的原理应用。
+The sender encrypts the original message into a digest with the `HASH` function, and then sends the digital digest together with the original message to the receiver. The receiver also uses the HASH function to encrypt the original message into a digest to see if the two digests are the same. Indicates that the information is complete. Otherwise, it is incomplete.
 
-**安全性再增强**
+- accomplish
 
-考虑到这只是针对客户需求的结果返回一致性，并不能确保请求包之间存在相同的请求内容，所以引入了请求 id，每个包都会生成唯一的 requestId，发出请求包后，该包只能由该请求发出的客户端所接受，就算两处有一点被对方恶意改动了，客户端都会报错并丢弃收到的响应包，不会拆包后去返回给用户，如果不是单单改动了 返回结果，而是将结果跟信息摘要都修改了，对方很难保证修改的内容加密后与修改后的信息摘要一致，因为要保证一致的数据传输协议和数据编解码
+When the client sends a request packet, the server will use MD5 one-way encryption to become a unique information digest (128 bits, 16 bytes) after the content of the request execution result is converted into bytecode and stored in the response packet. The corresponding member variable `checkCode`, so after the client gets the response packet, the most valuable place (the result of the request to be executed is changed), then the `checkCode` will not guarantee consistency, which is the principle of the information summary application.
+
+**Security Enhancements**
+
+Considering that this is only for the consistency of results returned by customer requirements, and does not ensure that the same request content exists between request packets, the request `id` is introduced.
+
+Each packet will generate a unique `requestId`. After the request packet is sent, the packet can only be accepted by the client that sent the request. Even if one of the two places is maliciously changed by the other party, the client will report an error and discard the received The response packet will not be unpacked and returned to the user.
+
+If not only the returned result is changed, but both the result and the message digest are modified, it is difficult for the other party to ensure that the modified content is the same as the modified message digest after encryption, because it is necessary to ensure the consistent data transmission protocol and data encoding and decoding.
 ### 2. Heartbeat mechanism
 
-心跳机制的 `RPC` 上应用的很广泛，本项目对心跳机制的实现很简单，而且应对措施是服务端强制断开连接，当然有些 `RPC` 框架实现了服务端去主动尝试重连。
-- 原理
+The `RPC` of the heartbeat mechanism is widely used. The implementation of the heartbeat mechanism in this project is very simple, and the countermeasure is to force the server to disconnect. Of course, some `RPC` frameworks implement the server to actively try to reconnect.
 
-对于心跳机制的应用，其实是使用了 `Netty` 框架中的一个 `handler` 处理器，通过该 处理器，去定时发送心跳包，让服务端知道该客户端保持活性状态。
+- Principle
 
-- 实现
+For the application of the heartbeat mechanism, a `handler` processor in the `Netty` framework is actually used. Through the handler, the heartbeat packet is sent regularly to let the server know that the client remains active.
 
-利用了 `Netty` 框架中的 `IdleStateEvent` 事件监听器，重写`userEventTriggered()` 方法，在服务端监听读操作，读取客户端的 写操作，在客户端监听写操作，监听本身是否还在活动，即有没有向服务端发送请求。
-如果客户端没有主动断开与服务端的连接，而继续保持连接着，那么客户端的写操作超时后，也就是客户端的监听器监听到客户端没有的规定时间内做出写操作事件，那么这时客户端该处理器主动发送心跳包给服务端，保证客户端让服务端确保自己保持着活性。
+- Accomplish
+
+Utilize the `IdleStateEvent` event listener in the `Netty` framework, rewrite the `userEventTriggered()` method, listen for read operations on the server side, read client write operations, monitor write operations on the client side, and monitor whether it is still there Activity, that is, whether there is a request sent to the server.
+
+If the client does not actively disconnect the connection with the server, but continues to maintain the connection, then after the client's write operation times out, that is, the client's listener listens to the client to make a write operation event within the specified time, then at this time The client processor actively sends a heartbeat packet to the server to ensure that the client allows the server to ensure that it remains active.
+
 ### 3. IO asynchronous non-blocking
 
-IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而且能够在请求数据返回时间段里去处理自己感兴趣的事情。
+IO asynchronous non-blocking allows the client to be in a blocking state when requesting data, and can process things of interest during the time period when the requested data is returned.
 
-- 原理
+- Principle
 
-使用 java8 出世的 `CompletableFuture` 并发工具类，能够异步处理数据，并在将来需要时获取。
+Using the `CompletableFuture` concurrency tool class born in java8, it can process data asynchronously and obtain it when needed in the future.
 
-- 实现
+- accomplish
 
-数据在服务端与客户端之间的通道 `channel` 中传输，客户端向通道发出请求包，需要等待服务端返回，这时可使用 `CompletableFuture` 作为返回结果，只需让客户端读取到数据后，将结果通过 `complete()`方法将值放进去后，在将来时通过`get()`方法获取结果。
-
+The data is transmitted in the channel `channel` between the server and the client. The client sends a request packet to the channel and needs to wait for the server to return. In this case, you can use `CompletableFuture` as the return result, just let the client read the After the data, the result is put in the value through the `complete()` method, and the result is obtained through the `get()` method in the future.
 ## Quick Start
 ```java
 /**
      * 自定义对象头 协议 16 字节
-     * 4 字节 魔数
-     * 4 字节 协议包类型
-     * 4 字节 序列化类型
-     * 4 字节 数据长度
+     * 4 byte magic number
+     * 4 byte protocol packet type
+     * 4 byte serialized type
+     * 4 byte data length
      *
      *       The transmission protocol is as follows :
      * +---------------+---------------+-----------------+-------------+
@@ -70,11 +79,11 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
      */
 ```
 ### 1.Dependences
-首先引入两个jar包文件`rpc-core-1.0.0.jar` 和 `rpc-core-1.0.0-jar-with-dependencies.jar`
+First import  two jar package files `rpc-core-1.0.0.jar` and `rpc-core-1.0.0-jar-with-dependencies.jar`
 
-`jar`包中包括字节码文件和`java`源码，引入后会自动把`class`和`sources`一并引入，源码可作为参考
+The `jar` package includes bytecode files and `java` source code. After introduction, `class` and `sources` will be automatically imported together. The source code can be used as a reference
 
-![依赖](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/依赖.png)
+![dependencies](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/依赖.png)
 
 ### 2. Start Nacos 
 
@@ -86,13 +95,13 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 startup -m standalone
 ```
 
-> 注意：开源RPC 默认使用 nacos 指定的本地端口号 8848 
+> Note: Open source RPC uses the local port number 8848 specified by nacos by default
 
-官方文档：https://nacos.io/zh-cn/docs/quick-start.html
+Official Documentation：https://nacos.io/zh-cn/docs/quick-start.html
 
-nacos 启动效果：
+Nacos start effect：
 
-![效果](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/nacos.png)
+![effect](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/nacos.png)
 
 ### 3. Provide Interface
 ```java
@@ -101,7 +110,7 @@ public interface HelloService {
 }
 ```
 ### 4. Start Server
-- 真实服务
+- Real Service
 ```java
 @Service
 public class HelloServiceImpl implements HelloService {
@@ -111,7 +120,7 @@ public class HelloServiceImpl implements HelloService {
     }
 }
 ```
-- 服务启动器
+- Service Launcher
 ```java
 @ServiceScan
 public class MyServer {
@@ -125,12 +134,14 @@ public class MyServer {
     }
 }
 ```
-> 注意：增加注解`cn.fyupeng.Service`和`cn.fyupeng.ServiceScan`才可被自动发现服务扫描并注册到 nacos 
+> Note: Add the annotations `cn.fyupeng.Service` and `cn.fyupeng.ServiceScan` to be scanned by the automatic discovery service and registered to nacos
 
 ### 5. Start com.fyupeng.Client
-初始化客户端时连接服务端有两种方式：
-- 直连
-- 使用负载均衡
+There are two ways to connect to the server when initializing the client:
+
+- Direct connection
+
+- use load balancing
 ```java
 public class MyClient {
     public static void main(String[] args) {
@@ -146,9 +157,9 @@ public class MyClient {
 ```
 ### 5. extra setting
 
-logback 重写使用
+logback rewrite uses
 
-在 resources 中加入 logback.xml
+Add logback.xml to resources
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
@@ -164,28 +175,29 @@ logback 重写使用
     </root>
 </configuration>
 ```
-除此之外，框架还提供了 Socket 方式的 Rpc 服务
+In addition, the framework also provides Rpc services in `Socket` mode
 
 ### 6. Application scenarios
 
-- 支持 springBoot 集成
+- Support springBoot integration
 
-为了支持`springBoot`集成`logback`日志，继承`rpc-netty-framework`使用同一套日志，抛弃`nacos-client`内置的`slf4j-api`与`commons-loging`原有`Jar`包，因为该框架会导致在整合`springboot`时，出现重复的日志绑定和日志打印方法的参数兼容问题，使用`jcl-over-slf4j-api`可解决该问题；
+In order to support `springBoot` to integrate `logback` logs, inherit `rpc-netty-framework` to use the same set of logs, abandon the built-in `slf4j-api` of `nacos-client` and the original `Jar` package of `commons-loging`, Because this framework will lead to repeated log binding and log printing method parameter compatibility problems when integrating `springboot`, this problem can be solved by using `jcl-over-slf4j-api`;
 
-在`springboot1.0`和`2.0`版本中，不使用它默认版本的`spring-boot-starter-log4j`,推荐使用`1.3.8.RELEASE`；
-springboot简单配置如下
+In `springboot1.0` and `2.0` versions, instead of using its default version of `spring-boot-starter-log4j`, it is recommended to use `1.3.8.RELEASE`;
+
+The simple configuration of springboot is as follows
 ```xml
 <dependencies>
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter</artifactId>
         <exclusions>
-            <!-- 排除 springboot 默认的 logback 日志框架 -->
+            <!-- Exclude springboot's default logback logging framework -->
             <exclusion>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-logging</artifactId>
             </exclusion>
-            <!-- 排除 springboot 默认的 commons-logging 实现（版本低，出现方法找不到问题） -->
+            <!-- Exclude the default commons-logging implementation of springboot (the version is low, and there is a problem that the method cannot be found) -->
             <exclusion>
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-jcl</artifactId>
@@ -193,13 +205,13 @@ springboot简单配置如下
         </exclusions>
     </dependency>
     
-    <!-- 与 logback 整合（通过 @Slf4j 注解即可使用） -->
+    <!-- Integration with logback (available via @Slf4j annotation) -->
     <dependency>
         <groupId>org.projectlombok</groupId>
         <artifactId>lombok</artifactId>
         <version>1.18.10</version>
     </dependency>
-    <!--引入log4j日志依赖，目的是使用 jcl-over-slf4j 来重写 commons logging 的实现-->
+    <!-- import log4j log dependency, the purpose is to use jcl-over-slf4j to rewrite the implementation of commons logging -->
     <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-log4j</artifactId>
@@ -209,39 +221,52 @@ springboot简单配置如下
 
 ```
 
-
-
-
 ### 7. exception resolution
 - ServiceNotFoundException
 
-解决真实服务不存在的情况，导致负载均衡中使用的策略出现异常的情况，修复后会强制抛出`ServiceNotFoundException`，或许大部分情况是服务未启动。当然，推荐真实服务应该在服务启动器的内层包中，同层可能会不起作用。
-除非使用注解注明包名`@ServiceScan("com.fyupeng")`
+Throws exception `ServiceNotFoundException`
+
+Solve the situation that the real service does not exist, resulting in an abnormal situation in the strategy used in the load balancing. After the repair, a `ServiceNotFoundException` will be forced to be thrown. Perhaps the service is not started in most cases.
+
+Of course, it is recommended that the real service should be in the inner package of the service launcher, the same layer may not work.
+
+Unless an annotation is used to indicate the package name `@ServiceScan("com.fyupeng")`
 
 - ReceiveResponseException
 
-抛出异常`data in package is modified Exception`；
-信息摘要算法的实现，使用的是`String`类型的`equals`方法，所以客户端在编写`Service`接口时，如果返回类型不是八大基本类型 + String 类型，也就是复杂对象类型，那么要重写`toString`方法，不使用`Object`默认的`toString`方法，因为它默认打印信息为`16`位的内存地址，在做校验中，发送的包和请求获取的包是需要重新实例化的，说白了就是深克隆，**必须** 重写`Object`原有`toString`方法。
-为了避免该情况发生，建议所有`PoJo`、`VO`类必须重写`toString`方法，其实就是所有真实业务方法返回类型的实体，必须重写`toString`方法。
+Throws exception `data in package is modified Exception`
+
+The implementation of the information digest algorithm uses the `equals` method of the `String` type, so when the client writes the `Service` interface, if the return type is not the eight basic types + String type, that is, the complex object type, then the Write the `toString` method.
+
+Do not use the default `toString` method of `Object`, because it prints the information as a `16`-bit memory address by default. During verification, the sent packet and the requested packet need to be re-instantiated. To put it bluntly, it is Deep clone, **must** override the original `toString` method of `Object`.
+
+In order to avoid this situation, it is recommended that all `PoJo` and `VO` classes must rewrite the `toString` method. In fact, all entities of the return type of the real business methods must rewrite the `toString` method.
 
 - RegisterFailedException
 
-抛出异常`Failed to register service Exception`，原因是注册中心没有启动或者注册中心地址端口指定不明。
+Throws an exception `Failed to register service Exception`
+
+The reason is that the registration center is not activated or the registration center address port is not specified.
 
 - NotSuchMethodException
 
-出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0.0-jar-with-dependenceies.jar`中`org.apache.commons`包
+Throws exception `java.lang.NoSuchMethodError: org.slf4j.spi.LocationAwareLogger.log`
+
+The reason for this exception is that the dependency package depends on the `jar` package of `jcl-over-slf4j`, which is the same as the `jcl-over-slf4j` provided in `springboot-starter-log4j`. It is recommended to manually delete `rpc-core` -1.0.0-jar-with-dependenceies.jar in the `org.apache.commons` package
 
 - DecoderException
 
-抛出异常：`com.esotericsoftware.kryo.KryoException: Class cannot be created (missing no-arg constructor): java.lang.StackTraceElement`，主要是因为`Kryo`序列化和反序列化是通过无参构造反射创建的，所以使用到`Pojo`类，首先必须对其创建无参构造函数，否则将抛出该异常，并且无法正常执行。
+Throws exception: `com.esotericsoftware.kryo.KryoException: Class cannot be created (missing no-arg constructor): java.lang.StackTraceElement`
+
+Mainly because `Kryo` serialization and deserialization are created by reflection with no parameter construction, so when using the `Pojo` class, you must first create a parameterless constructor for it, otherwise the exception will be thrown and cannot be executed normally .
 
 - InvocationTargetException
 
-抛出异常：`Serialization trace:stackTrace (java.lang.reflect.InvocationTargetException)`，主要也是反射调用失败，主要原因还是反射执行目标函数失败，缺少相关函数，可能是构造函数或者其他方法参数问题。
+Throws exception: `Serialization trace:stackTrace (java.lang.reflect.InvocationTargetException)`
 
+The main reason is that the reflection call fails. The main reason is that the reflection execution target function fails, and the related functions are missing. It may be a problem with the constructor or other method parameters.
 
-### 8. Development Statement
-有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合
+### 8. Development Notes
 
+If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation
 
