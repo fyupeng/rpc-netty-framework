@@ -62,11 +62,11 @@ The data is transmitted in the channel `channel` between the server and the clie
 ## Quick Start
 ```java
 /**
-     * 自定义对象头 协议 16 字节
-     * 4 byte magic number
-     * 4 byte protocol packet type
-     * 4 byte serialized type
-     * 4 byte data length
+     * custom object header protocol 16 bytes
+     * 4 bytes magic number
+     * 4 bytes protocol packet type
+     * 4 bytes serialized type
+     * 4 bytes data length
      *
      *       The transmission protocol is as follows :
      * +---------------+---------------+-----------------+-------------+
