@@ -70,7 +70,7 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
      */
 ```
 ### 1.Dependences
-首先引入两个jar包文件`rpc-core-1.0-SNAPSHOT.jar` 和 `rpc-core-1.0-SNAPSHOT-jar-with-dependencies.jar`
+首先引入两个jar包文件`rpc-core-1.0.0.jar` 和 `rpc-core-1.0.0-jar-with-dependencies.jar`
 
 `jar`包中包括字节码文件和`java`源码，引入后会自动把`class`和`sources`一并引入，源码可作为参考
 
@@ -125,7 +125,7 @@ public class MyServer {
     }
 }
 ```
-> 注意：增加注解`com.zhkucst.anotion.Service`和`com.zhkucst.anotion.ServiceScan`才可被自动发现服务扫描并注册到 nacos 
+> 注意：增加注解`cn.fyupeng.Service`和`cn.fyupeng.ServiceScan`才可被自动发现服务扫描并注册到 nacos 
 
 ### 5. Start com.fyupeng.Client
 初始化客户端时连接服务端有两种方式：
@@ -222,7 +222,7 @@ springboot简单配置如下
 
 抛出异常`data in package is modified Exception`；
 信息摘要算法的实现，使用的是`String`类型的`equals`方法，所以客户端在编写`Service`接口时，如果返回类型不是八大基本类型 + String 类型，也就是复杂对象类型，那么要重写`toString`方法，不使用`Object`默认的`toString`方法，因为它默认打印信息为`16`位的内存地址，在做校验中，发送的包和请求获取的包是需要重新实例化的，说白了就是深克隆，**必须** 重写`Object`原有`toString`方法。
-为了避免该情况发生，建议所有`PoJo`类必须重写`toString`方法、所有真实业务方法返回体，必须重写`toString`方法。
+为了避免该情况发生，建议所有`PoJo`、`VO`类必须重写`toString`方法，其实就是所有真实业务方法返回类型的实体，必须重写`toString`方法。
 
 - RegisterFailedException
 
@@ -230,7 +230,7 @@ springboot简单配置如下
 
 - NotSuchMethodException
 
-出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0-SNAPSHOT-jar-with-dependenceies.jar`中`org.apache.commons`包
+出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0.0-jar-with-dependenceies.jar`中`org.apache.commons`包
 
 - DecoderException
 
