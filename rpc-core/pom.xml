@@ -5,7 +5,7 @@
     <parent>
         <artifactId>rpc-netty-framework</artifactId>
         <groupId>cn.fyupeng</groupId>
-        <version>1.0.0.RELEASE</version>
+        <version>1.0.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -19,7 +19,7 @@
         <dependency>
             <groupId>cn.fyupeng</groupId>
             <artifactId>rpc-common</artifactId>
-            <version>1.0.0.RELEASE</version>
+            <version>1.0.1</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
@@ -39,7 +39,8 @@
         </dependency>
     </dependencies>
 
-<!--        正式发布后，可以抛出引入大量依赖-->
+<!--        正式发布后，不用像之前一样下载大量依赖-->
+<!--    在项目中 pom 文件引入过什么依赖，import 会根据 maven 的依赖传递性自动依赖 -->
 <!--    <build>-->
 <!--        <plugins>-->
 <!--            &lt;!&ndash; Maven Assembly Plugin &ndash;&gt;-->
