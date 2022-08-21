@@ -235,11 +235,19 @@ springboot简单配置如下
 
 抛出异常`ServiceNotFoundException`
 
+堆栈信息：`service instances size is zero, can't provide service! please start server first!`
+
+正常情况下，一般的错误从报错中可以引导解决。
+
 解决真实服务不存在的情况，导致负载均衡中使用的策略出现异常的情况，修复后会强制抛出`ServiceNotFoundException`，或许大部分情况是服务未启动。
 
 当然，推荐真实服务应该在服务启动器的内层包中，同层可能会不起作用。
 
 除非使用注解注明包名`@ServiceScan("com.fyupeng")`
+
+其他情况下，如出现服务端无反应，而且服务已经成功注册到注册中心，那么你就得检查下服务端与客户端中接口命名的包名是否一致，如不一致，也是无法被自动发现服务从注册中心发现的，这样最常见的报错也是`service instances size is zero`。
+
+
 
 - ReceiveResponseException
 

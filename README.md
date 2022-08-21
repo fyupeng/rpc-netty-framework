@@ -241,12 +241,17 @@ The simple configuration of springboot is as follows
 
 Throws exception `ServiceNotFoundException`
 
+Stack information: `service instances size is zero, can't provide service! please start server first!`
+
+Under normal circumstances, general errors can be resolved from the error report.
+
 Solve the situation that the real service does not exist, resulting in an abnormal situation in the strategy used in the load balancing. After the repair, a `ServiceNotFoundException` will be forced to be thrown. Perhaps the service is not started in most cases.
 
 Of course, it is recommended that the real service should be in the inner package of the service launcher, the same layer may not work.
 
 Unless an annotation is used to indicate the package name `@ServiceScan("com.fyupeng")`
 
+In other cases, if there is no response from the server, and the service has been successfully registered in the registry, then you have to check whether the package names of the interface named in the server and the client are consistent. If they are inconsistent, the service cannot be automatically discovered. The registry found that the most common error is `service instances size is zero`.
 - ReceiveResponseException
 
 Throws exception `data in package is modified Exception`
