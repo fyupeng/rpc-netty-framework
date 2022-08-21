@@ -79,11 +79,26 @@ The data is transmitted in the channel `channel` between the server and the clie
      */
 ```
 ### 1.Dependences
+
+#### 1.1 Direct Import
+
 First import  two jar package files `rpc-core-1.0.0.jar` and `rpc-core-1.0.0-jar-with-dependencies.jar`
 
 The `jar` package includes bytecode files and `java` source code. After introduction, `class` and `sources` will be automatically imported together. The source code can be used as a reference
 
 ![dependencies](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/依赖.png)
+
+#### 1.2 Maven Import
+
+Import the following `maven` will also import the dependencies of `rpc-common` and the default registry center framework `nacos-client`
+
+```xml
+<dependency>
+    <groupId>cn.fyupeng</groupId>
+    <artifactId>rpc-core</artifactId>
+    <version>1.0.0.RELEASE</version>
+</dependency>
+```
 
 ### 2. Start Nacos 
 

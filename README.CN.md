@@ -76,11 +76,26 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
      */
 ```
 ### 1.依赖
+
+#### 1.1 直接引入
+
 首先引入两个jar包文件`rpc-core-1.0.0.jar` 和 `rpc-core-1.0.0-jar-with-dependencies.jar`
 
 `jar`包中包括字节码文件和`java`源码，引入后会自动把`class`和`sources`一并引入，源码可作为参考
 
 ![依赖](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/依赖.png)
+
+#### 1.2 maven引入
+
+引入以下`maven`，会一并引入`rpc-common`与默认使用的注册中心`nacos-client`相关依赖
+
+```xml
+<dependency>
+    <groupId>cn.fyupeng</groupId>
+    <artifactId>rpc-core</artifactId>
+    <version>1.0.0.RELEASE</version>
+</dependency>
+```
 
 ### 2. 启动 Nacos
 
