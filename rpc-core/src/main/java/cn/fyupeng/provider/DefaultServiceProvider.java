@@ -30,7 +30,7 @@ public class DefaultServiceProvider implements ServiceProvider {
         // 获取该 对象的 所有接口 对象
         // 将 service 所有暴露的接口名 以键值对 存入 Map（暴露给客户端的只有接口）
         serviceMap.put(serviceName, service);
-        log.info("向接口: {} 注册服务: {} ", service.getClass().getInterfaces(), serviceName);
+        log.info("Register service: {} with interface: {} ", service.getClass().getInterfaces(), serviceName);
     }
 
     @Override
