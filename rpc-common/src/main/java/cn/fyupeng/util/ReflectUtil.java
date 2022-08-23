@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.deser.impl.NullsAsEmptyProvider;
 import javafx.scene.control.TableView;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.xml.bind.Element;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
@@ -11,11 +12,10 @@ import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.file.DirectoryIteratorException;
-import java.util.Enumeration;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Stream;
 
 /**
  * @Auther: fyp
@@ -27,9 +27,55 @@ import java.util.jar.JarFile;
 @Slf4j
 public class ReflectUtil {
 
+    /**
+     * fix: 修复 Jar 包启动，注解扫描失败的问题
+     * 这里如果使用 springboot 启动的话，有两种启动情况
+     * 1. 项目启动方式：那么堆栈信息最后堆栈类为 启动类，本项目堆栈信息
+     * stack info: cn.fyupeng.util.ReflectUtil.getStackTrace(ReflectUtil.java:31)
+     * stack info: cn.fyupeng.net.AbstractRpcServer.scanServices(AbstractRpcServer.java:36)
+     * stack info: cn.fyupeng.net.netty.server.NettyServer.<init>(NettyServer.java:46)
+     * stack info: cn.fyupeng.UserServer.run(UserServer.java:42)
+     * stack info: org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:813)
+     * stack info: org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:797)
+     * stack info: org.springframework.boot.SpringApplication.run(SpringApplication.java:324)
+     * stack info: org.springframework.boot.SpringApplication.run(SpringApplication.java:1260)
+     * stack info: org.springframework.boot.SpringApplication.run(SpringApplication.java:1248)
+     * stack info: cn.fyupeng.UserServer.main(UserServer.java:35)
+     *
+     * 2. Jar启动方式：是先按照第一种方式启动，然后本地方法反射，最后还是在 springboot 的 JarLauncher 启动器上启动
+     * stack info: cn.fyupeng.util.ReflectUtil.getStackTrace(ReflectUtil.java:31)
+     * stack info: cn.fyupeng.net.AbstractRpcServer.scanServices(AbstractRpcServer.java:36)
+     * stack info: cn.fyupeng.net.netty.server.NettyServer.<init>(NettyServer.java:46)
+     * stack info: .UserServer.run(UserServer.java:42)
+     * stack info: org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:813)
+     * stack info: org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:797)
+     * stack info: org.springframework.boot.SpringApplication.run(SpringApplication.java:324)
+     * stack info: org.springframework.boot.SpringApplication.run(SpringApplication.java:1260)
+     * stack info: org.springframework.boot.SpringApplication.run(SpringApplication.java:1248)
+     * stack info: cn.fyupeng.UserServer.main(UserServer.java:35)
+     * stack info: sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+     * stack info: sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+     * stack info: sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+     * stack info: java.lang.reflect.Method.invoke(Method.java:498)
+     * stack info: org.springframework.boot.loader.MainMethodRunner.run(MainMethodRunner.java:48)
+     * stack info: org.springframework.boot.loader.Launcher.launch(Launcher.java:87)
+     * stack info: org.springframework.boot.loader.Launcher.launch(Launcher.java:50)
+     * stack info: org.springframework.boot.loader.JarLauncher.main(JarLauncher.java:51)
+     *
+     * @return
+     */
     public static String getStackTrace() {
         StackTraceElement[] stack = new Throwable().getStackTrace();
-        return stack[stack.length - 1].getClassName();
+        Stack<StackTraceElement> newStack = new Stack<>();
+        for (int index = 0; index < stack.length; index++) {
+            if (!stack[index].getClassName().startsWith("java.lang.reflect") && !stack[index].getClassName().startsWith("sun.reflect") && !stack[index].getClassName().startsWith("org.springframework.boot")) {
+                newStack.push(stack[index]);
+            }
+            log.trace("stack info: {}", stack[index]);
+        }
+        // Jar 启动会 出现 注解扫描失败
+        //return stack[stack.length - 1].getClassName();
+        return newStack.pop().getClassName();
     }
 
     public static Set<Class<?>> getClasses(String packageName) {
@@ -117,7 +163,8 @@ public class ReflectUtil {
                 try {
                     classSet.add(Thread.currentThread().getContextClassLoader().loadClass(packageName + "." + className));
                 } catch (ClassNotFoundException e) {
-                    e.printStackTrace();
+                    //e.printStackTrace();
+                    log.warn("ClassNotFoundWarning: {}", e.getMessage());
                 }
             }
         }
