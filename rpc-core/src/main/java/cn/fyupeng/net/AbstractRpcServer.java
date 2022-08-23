@@ -9,6 +9,7 @@ import cn.fyupeng.registry.ServiceRegistry;
 import cn.fyupeng.util.ReflectUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.annotation.Annotation;
 import java.net.InetSocketAddress;
 import java.util.Set;
 
@@ -33,9 +34,13 @@ public abstract class AbstractRpcServer implements RpcServer {
    public void scanServices() throws RpcException {
       // 获取调用者 start 服务时所在的主类名, 即 调用者 调用 AbstractRpcServer 的子类 类名
       String mainClassName = ReflectUtil.getStackTrace();
+      log.info("mainClassName: {}", mainClassName);
       Class<?> startClass;
       try {
          startClass = Class.forName(mainClassName);
+         for (Annotation annotation : startClass.getAnnotations()) {
+            log.info("discover annotation: {}", annotation);
+         }
          if (!startClass.isAnnotationPresent(ServiceScan.class)) {
             log.error("The startup class is missing the @ServiceScan annotation");
             throw new AnnotationMissingException("The startup class is missing the @ServiceScan annotation Exception");
