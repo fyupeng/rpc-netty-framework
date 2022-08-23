@@ -8,6 +8,8 @@ import cn.fyupeng.net.AbstractRpcServer;
 import cn.fyupeng.provider.DefaultServiceProvider;
 import cn.fyupeng.registry.NacosServiceRegistry;
 import cn.fyupeng.serializer.CommonSerializer;
+import cn.fyupeng.util.IpUtils;
+import cn.fyupeng.util.JsonUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -33,11 +35,14 @@ public class NettyServer extends AbstractRpcServer {
 
     /**
      * 不放到 抽象层 是 因为 不希望 被继承，子类会 破坏 CommonSerializer 的 完整性
+     * 使用时，主机名一般运行在项目所在服务器上，推荐 localhost 和 127.0.0.1
+     * 或者 公网 主机名
      */
     private final CommonSerializer serializer;
 
     public NettyServer(String hostName, int port, Integer serializerCode) throws RpcException {
-        this.hostName = hostName;
+        this.hostName = hostName.equals("localhost") || hostName.equals("127.0.0.1") ? IpUtils.getPubIpAddr() : hostName;
+        log.info("start with host: {}, port: {}", this.hostName, this.port);
         this.port = port;
         serviceRegistry = new NacosServiceRegistry();
         serviceProvider = new DefaultServiceProvider();
