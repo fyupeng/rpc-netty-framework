@@ -93,7 +93,7 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>1.0.0.RELEASE</version>
+    <version>1.0.4.RELEASE</version>
 </dependency>
 ```
 
@@ -167,9 +167,29 @@ public class MyClient {
 ```
 ### 5. 额外配置
 
-logback 重写使用
+#### 5.1 配置文件
 
-在 resources 中加入 logback.xml
+- 项目方式启动
+
+在 resources 中加入 resource.properties
+
+主机名使用`localhost`或`127.0.0.1`指定
+```properties
+cn.fyupeng.nacos.register-addr=localhost:8848
+```
+
+- `Jar`方式启动
+
+，兼容`springboot`的外部启动配置文件注入，需要在`Jar`包同目录下新建`config`文件夹，在`config`中与`springboot`一样注入配置文件，只不过`springboot`注入的配置文件默认约束名为`application.properties`，而`rpc-netty-framework`默认约束名为`resource.properties`。
+
+目前可注入的配置信息有：
+```properties
+cn.fyupeng.nacos.register-addr=localhost:8848
+```
+
+#### 5.2 日志配置
+
+在 `resources` 中加入 `logback.xml`
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
@@ -262,7 +282,7 @@ springboot简单配置如下
 
 抛出异常`Failed to register service Exception`
 
-原因是注册中心没有启动或者注册中心地址端口指定不明。
+原因是注册中心没有启动或者注册中心地址端口指定不明，或者因为防火墙问题，导致`Nacos`所在服务器的端口访问失败。
 
 - NotSuchMethodException
 抛出异常`java.lang.NoSuchMethodError:  org.slf4j.spi.LocationAwareLogger.log`
@@ -288,6 +308,8 @@ springboot简单配置如下
 [ [#1.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.1/pom) ]：解决真实分布式场景下出现的注册服务找不到的逻辑问题；
 
 [ [#1.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.2/pom) ]：解耦注册中心的地址绑定，可到启动器所在工程项目的资源下配置`resource.properties`文件；
+
+[ [#1.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4/pom) ]：修`Jar`方式部署项目后注册到注册中心的服务未能被发现的问题，解耦`Jar`包启动配置文件的注入，约束名相同会覆盖项目原有配置信息。
 
 ### 9. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合

@@ -96,7 +96,7 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>1.0.0.RELEASE</version>
+    <version>1.0.4.RELEASE</version>
 </dependency>
 ```
 
@@ -172,9 +172,33 @@ public class MyClient {
 ```
 ### 5. extra setting
 
-logback rewrite uses
+- Project mode start
 
-Add logback.xml to resources
+Add resource.properties to resources
+
+The hostname is specified using `localhost` or `127.0.0.1`
+
+````properties
+
+cn.fyupeng.nacos.register-addr=localhost:8848
+
+````
+
+- `Jar` way to start
+
+, Compatible with `springboot` external startup configuration file injection, you need to create a `config` folder in the same directory as the `Jar` package, and inject the configuration file in `config` like `springboot`, but the configuration injected by `springboot` The file default constraint name is `application.properties`, and the `rpc-netty-framework` default constraint name is `resource.properties`.
+
+The currently injectable configuration information is:
+
+````properties
+
+cn.fyupeng.nacos.register-addr=localhost:8848
+
+````
+
+#### 5.2 Log configuration
+
+Add `logback.xml` to `resources`
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
@@ -266,7 +290,7 @@ In order to avoid this situation, it is recommended that all `PoJo` and `VO` cla
 
 Throws an exception `Failed to register service Exception`
 
-The reason is that the registration center is not activated or the registration center address port is not specified.
+The reason is that the registry is not started or the address and port of the registry are not specified, or the port access of the server where `Nacos` is located fails due to a firewall problem.
 
 - NotSuchMethodException
 
@@ -293,6 +317,8 @@ The main reason is that the reflection call fails. The main reason is that the r
 - [ [#1.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.1/pom) ]: Solve the problem that the registration service cannot be found in real distributed scenarios logical problem;
 
 - [ [#1.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.2/pom) ]: Decoupled registry address binding, available to the launcher Configure the `resource.properties` file under the resources of the project where you are located;
+
+- [ [#1.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4/pom) ]: After deploying the project in the `Jar` method, register it in the registry The problem that the service cannot be found, decoupling the `Jar` package to start the injection of the configuration file, the same constraint name will overwrite the original configuration information of the project.
 
 ### 9. Development Notes
 
