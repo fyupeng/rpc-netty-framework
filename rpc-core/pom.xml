@@ -5,7 +5,7 @@
     <parent>
         <artifactId>rpc-netty-framework</artifactId>
         <groupId>cn.fyupeng</groupId>
-        <version>1.0.2</version>
+        <version>1.0.4.RELEASE</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -19,7 +19,7 @@
         <dependency>
             <groupId>cn.fyupeng</groupId>
             <artifactId>rpc-common</artifactId>
-            <version>1.0.2</version>
+            <version>1.0.4.SNATSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
@@ -34,6 +34,14 @@
 <!--                <exclusion>-->
 <!--                    <artifactId>jcl-over-slf4j</artifactId>-->
 <!--                    <groupId>org.slf4j</groupId>-->
+<!--                </exclusion>-->
+<!--                <exclusion>-->
+<!--                    <groupId>org.slf4j</groupId>-->
+<!--                    <artifactId>slf4j-nop</artifactId>-->
+<!--                </exclusion>-->
+<!--                <exclusion>-->
+<!--                    <groupId>org.slf4j</groupId>-->
+<!--                    <artifactId>slf4j-jdk14</artifactId>-->
 <!--                </exclusion>-->
 <!--            </exclusions>-->
 <!--        </dependency>-->
