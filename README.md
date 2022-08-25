@@ -286,6 +286,8 @@ Do not use the default `toString` method of `Object`, because it prints the info
 
 In order to avoid this situation, it is recommended that all `PoJo` and `VO` classes must rewrite the `toString` method. In fact, all entities of the return type of the real business methods must rewrite the `toString` method.
 
+If the return body has nested complex objects, all complex objects must rewrite `toString`. As long as the `toString` method of different objects but the same content prints the same information, the data integrity detection will not be false.
+
 - RegisterFailedException
 
 Throws an exception `Failed to register service Exception`
@@ -310,6 +312,16 @@ Throws exception: `Serialization trace:stackTrace (java.lang.reflect.InvocationT
 
 The main reason is that the reflection call fails. The main reason is that the reflection execution target function fails, and the related functions are missing. It may be a problem with the constructor or other method parameters.
 
+- AnnotationMissingException
+
+Throwing exception: `cn.fyupeng.exception.AnnotationMissingException`
+
+As can be seen from the printing information, trace the printing of the `AbstractRpcServer` class information
+````ruby
+cn.fyupeng.net.AbstractRpcServer [main] - mainClassName: jdk.internal.reflect.DirectMethodHandleAccessor
+````
+If `mainClassName` is not the class name of the `@ServiceScan` annotation mark, you need to modify or rewrite the `getStackTrace` method under the package `cn.fyupeng.util.ReflectUtil`, and add the unfiltered package name to the filter list. Yes, it may be related to the version of `JDK`.
+
 ### 8. Version Tracking
 
 #### Version 1.0
@@ -318,9 +330,11 @@ The main reason is that the reflection call fails. The main reason is that the r
 
 - [ [#1.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.2/pom) ]: Decoupled registry address binding, available to the launcher Configure the `resource.properties` file under the resources of the project where you are located;
 
-- [ [#1.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4/pom) ]: After deploying the project in the `Jar` method, register it in the registry The problem that the service cannot be found, decoupling the `Jar` package to start the injection of the configuration file, the same constraint name will overwrite the original configuration information of the project.
+- [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]: After deploying the project in the `Jar` method, register it in the registry The problem that the service cannot be found, decoupling the `Jar` package to start the injection of the configuration file, the same constraint name will overwrite the original configuration information of the project.
+
+- [ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]: The default level of the heartbeat mechanism printing configuration is `trace`, and the default log level is `info`, which needs to be enabled in `logback.xml`.
 
 ### 9. Development Notes
 
-If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation
+If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation!
 
