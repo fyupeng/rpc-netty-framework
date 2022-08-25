@@ -68,7 +68,11 @@ public class ReflectUtil {
         StackTraceElement[] stack = new Throwable().getStackTrace();
         Stack<StackTraceElement> newStack = new Stack<>();
         for (int index = 0; index < stack.length; index++) {
-            if (!stack[index].getClassName().startsWith("java.lang.reflect") && !stack[index].getClassName().startsWith("sun.reflect") && !stack[index].getClassName().startsWith("org.springframework.boot")) {
+            if (!stack[index].getClassName().startsWith("java.lang.reflect") &&
+                    !stack[index].getClassName().startsWith("sun.reflect") &&
+                    !stack[index].getClassName().startsWith("org.springframework.boot") &&
+                    !stack[index].getClassName().startsWith("jdk.internal.reflect"))
+            {
                 newStack.push(stack[index]);
             }
             log.trace("stack info: {}", stack[index]);
