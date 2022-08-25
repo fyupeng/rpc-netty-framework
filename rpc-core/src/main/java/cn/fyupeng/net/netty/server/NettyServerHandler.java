@@ -37,7 +37,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
              * 心跳包 只 作为 检测包，不做处理
              */
             if (msg.getHeartBeat()) {
-                log.info("receive hearBeatPackage from customer...");
+                log.trace("receive hearBeatPackage from customer...");
                 return;
             }
             log.info("server has received request: {}", msg);
