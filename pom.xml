@@ -7,7 +7,7 @@
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-netty-framework</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.4.RELEASE</version>
+    <version>1.0.5</version>
 
     <name>rpc-netty-framework</name>
     <url>https://github.com/fyupeng/rpc-netty-framework</url>
