@@ -314,6 +314,20 @@ cn.fyupeng.net.AbstractRpcServer [main] - mainClassName: jdk.internal.reflect.Di
 ```
 如果`mainClassName`不为`@ServiceScan`注解标记所在类名，则需要到包`cn.fyupeng.util.ReflectUtil`下修改或重写`getStackTrace`方法，将没有过滤的包名加进过滤列表即可，这可能与`JDK`的版本有关。
 
+- OutOfMemoryError
+
+抛出异常`java.lang.OutOfMemoryError: Requested array size exceeds VM limit`
+
+基本不可能会抛出该错误，由于考虑到并发请求，可能导致，如果请求包分包，会出现很多问题，所以每次请求只发送一个请求包，如在应用场景需要发送大数据，比如发表文章等等，需要手动去重写使用的序列化类的`serialize`方法
+
+例如：KryoSerializer可以重写`serialize`方法中写缓存的大小，默认为`4096`，超出该大小会很容易报数组越界异常问题。
+```java
+/**
+ * bufferSize: 缓存大小
+ */
+Output output = new Output(byteArrayOutputStream,100000))
+```
+
 ### 8. 版本追踪
 
 #### 1.0版本
@@ -325,6 +339,8 @@ cn.fyupeng.net.AbstractRpcServer [main] - mainClassName: jdk.internal.reflect.Di
 [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]：修`Jar`方式部署项目后注册到注册中心的服务未能被发现的问题，解耦`Jar`包启动配置文件的注入，约束名相同会覆盖项目原有配置信息；
 
 [ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]：将心跳机制打印配置默认级别为`trace`，默认日志级别为`info`，需要开启到`logback.xml`启用。
+
+[ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]：默认请求包大小为`4096`字节，扩容为`100000`字节，满足日常的`100000`字的数据包，不推荐发送大数据包，如有需求看异常`OutOfMemoryError`说明。
 
 ### 9. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！

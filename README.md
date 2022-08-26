@@ -322,6 +322,20 @@ cn.fyupeng.net.AbstractRpcServer [main] - mainClassName: jdk.internal.reflect.Di
 ````
 If `mainClassName` is not the class name of the `@ServiceScan` annotation mark, you need to modify or rewrite the `getStackTrace` method under the package `cn.fyupeng.util.ReflectUtil`, and add the unfiltered package name to the filter list. Yes, it may be related to the version of `JDK`.
 
+- OutOfMemoryError
+
+Throws exception `java.lang.OutOfMemoryError: Requested array size exceeds VM limit`
+
+It is basically impossible to throw this error. Considering concurrent requests, it may cause many problems if the request package is subpackaged, so only one request package is sent per request. For example, in application scenarios, large data needs to be sent, such as publishing Articles, etc., need to manually override the `serialize` method of the serialization class used.
+
+For example: KryoSerializer can override the size of the write cache in the `serialize` method. The default value is `4096`. Exceeding this size will easily report an array out-of-bounds exception.
+````java
+/**
+* bufferSize: buffer size
+*/
+Output output = new Output(byteArrayOutputStream,100000))
+````
+
 ### 8. Version Tracking
 
 #### Version 1.0
@@ -333,6 +347,8 @@ If `mainClassName` is not the class name of the `@ServiceScan` annotation mark, 
 - [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]: After deploying the project in the `Jar` method, register it in the registry The problem that the service cannot be found, decoupling the `Jar` package to start the injection of the configuration file, the same constraint name will overwrite the original configuration information of the project.
 
 - [ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]: The default level of the heartbeat mechanism printing configuration is `trace`, and the default log level is `info`, which needs to be enabled in `logback.xml`.
+
+[ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]: The default request packet size is `4096` Bytes, and the expansion is `100000` Bytes, meet the daily `100000` word data packets, it is not recommended to send large data packets, if necessary, see the exception `OutOfMemoryError` description.
 
 ### 9. Development Notes
 
