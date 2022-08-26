@@ -33,7 +33,7 @@ public class KryoSerializer implements CommonSerializer {
     @Override
     public byte[] serialize(Object obj) {
         try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-             Output output = new Output(byteArrayOutputStream)){
+             Output output = new Output(byteArrayOutputStream,100000)){
             Kryo kryo = kryoThreadLocal.get();
             kryo.writeObject(output, obj);
             kryoThreadLocal.remove();
