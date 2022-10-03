@@ -260,7 +260,23 @@ The simple configuration of springboot is as follows
 
 ```
 
-### 7. exception resolution
+### 7. Highly available clusters
+```properties
+cn.fyupeng.nacos.cluster.use=true
+cn.fyupeng.nacos.cluster.load-balancer=random
+cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:8849
+```
+- Usage and Points to Note
+
+  By default, `cn.fyupeng.nacos.cluster.use` obeys the convention better than the configuration setting, and the default value is `false`, indicating that the cluster is not opened by default
+  `cn.fyupeng.nacos.cluster.load-balancer` and `cn.fyupeng.nacos.cluster.nodes` must be turned on in cluster mode before they can be used.
+- Cluster node load policy
+  - `random`: random policy
+  - `round`: polling policy
+
+Cluster nodes are theoretically infinitely scalable and can be extended using the separator `[;,|]`.
+
+### 8. exception resolution
 - ServiceNotFoundException
 
 Throws exception `ServiceNotFoundException`
@@ -293,6 +309,12 @@ If the return body has nested complex objects, all complex objects must rewrite 
 Throws an exception `Failed to register service Exception`
 
 The reason is that the registry is not started or the address and port of the registry are not specified, or the port access of the server where `Nacos` is located fails due to a firewall problem.
+
+When using the framework, the following two points should be noted.
+
+(1) support the registration of local addresses, such as localhost or 127.0.0.1, then the registered address will be resolved into a public address.
+
+(2) support the registration of intranet addresses and extranet addresses, then the address is the corresponding intranet address or extranet address, and will not resolve them.
 
 - NotSuchMethodException
 
@@ -336,7 +358,7 @@ For example: KryoSerializer can override the size of the write cache in the `ser
 Output output = new Output(byteArrayOutputStream,100000))
 ````
 
-### 8. Version Tracking
+### 9. Version Tracking
 
 #### Version 1.0
 
@@ -348,9 +370,11 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]: The default level of the heartbeat mechanism printing configuration is `trace`, and the default log level is `info`, which needs to be enabled in `logback.xml`.
 
-[ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]: The default request packet size is `4096` Bytes, and the expansion is `100000` Bytes, meet the daily `100000` word data packets, it is not recommended to send large data packets, if necessary, see the exception `OutOfMemoryError` description.
+- [ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]: The default request packet size is `4096` Bytes, and the expansion is `100000` Bytes, meet the daily `100000` word data packets, it is not recommended to send large data packets, if necessary, see the exception `OutOfMemoryError` description.
 
-### 9. Development Notes
+- [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: Fix the problem that load balancing fails to correctly balance the selection, provide configuration center high availability cluster node injection configuration, cluster node load balancing configuration
+
+### 10. Development Notes
 
 If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation!
 

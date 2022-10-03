@@ -250,7 +250,27 @@ springboot简单配置如下
 
 ```
 
-### 7. 异常解决
+### 7. 高可用集群
+
+```properties
+cn.fyupeng.nacos.cluster.use=true
+cn.fyupeng.nacos.cluster.load-balancer=random
+cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:8849
+```
+- 使用方法及注意要点
+
+默认情况下，`cn.fyupeng.nacos.cluster.use`服从约定优于配置设定，且默认值为`false`，表示默认不打开集群；
+
+`cn.fyupeng.nacos.cluster.load-balancer`与`cn.fyupeng.nacos.cluster.nodes`使用前必须先打开集群模式
+
+- 集群节点负载策略
+  - `random`：随机策略
+  - `round`：轮询策略
+
+集群节点理论上允许无限扩展，可使用分隔符`[;,|]`扩展配置
+
+
+### 8. 异常解决
 - ServiceNotFoundException
 
 抛出异常`ServiceNotFoundException`
@@ -292,6 +312,12 @@ springboot简单配置如下
 
 出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0.0-jar-with-dependenceies.jar`中`org.apache.commons`包
 
+使用该框架时，需注意以下两点：
+
+(1) 支持注册本地地址，如 localhost或127.0.0.1，则注册地址会解析成公网地址；
+
+(2) 支持注册内网地址和外网地址，则地址为对应内网地址或外网地址，不会将其解析；
+
 - DecoderException
 
 抛出异常：`com.esotericsoftware.kryo.KryoException: Class cannot be created (missing no-arg constructor): java.lang.StackTraceElement`
@@ -328,21 +354,23 @@ cn.fyupeng.net.AbstractRpcServer [main] - mainClassName: jdk.internal.reflect.Di
 Output output = new Output(byteArrayOutputStream,100000))
 ```
 
-### 8. 版本追踪
+### 9. 版本追踪
 
 #### 1.0版本
 
-[ [#1.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.1/pom) ]：解决真实分布式场景下出现的注册服务找不到的逻辑问题；
+- [ [#1.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.1/pom) ]：解决真实分布式场景下出现的注册服务找不到的逻辑问题；
 
-[ [#1.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.2/pom) ]：解耦注册中心的地址绑定，可到启动器所在工程项目的资源下配置`resource.properties`文件；
+- [ [#1.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.2/pom) ]：解耦注册中心的地址绑定，可到启动器所在工程项目的资源下配置`resource.properties`文件；
 
-[ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]：修`Jar`方式部署项目后注册到注册中心的服务未能被发现的问题，解耦`Jar`包启动配置文件的注入，约束名相同会覆盖项目原有配置信息；
+- [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]：修`Jar`方式部署项目后注册到注册中心的服务未能被发现的问题，解耦`Jar`包启动配置文件的注入，约束名相同会覆盖项目原有配置信息；
 
-[ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]：将心跳机制打印配置默认级别为`trace`，默认日志级别为`info`，需要开启到`logback.xml`启用。
+- [ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]：将心跳机制打印配置默认级别为`trace`，默认日志级别为`info`，需要开启到`logback.xml`启用。
 
-[ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]：默认请求包大小为`4096`字节，扩容为`100000`字节，满足日常的`100000`字的数据包，不推荐发送大数据包，如有需求看异常`OutOfMemoryError`说明。
+- [ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]：默认请求包大小为`4096`字节，扩容为`100000`字节，满足日常的`100000`字的数据包，不推荐发送大数据包，如有需求看异常`OutOfMemoryError`说明。
 
-### 9. 开发说明
+- [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: 修复负载均衡未能正确均衡选择的问题，提供配置中心高可用集群节点注入配置、集群节点负载均衡配置
+
+### 10. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！
 
 
