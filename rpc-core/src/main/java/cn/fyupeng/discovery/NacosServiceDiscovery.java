@@ -31,7 +31,8 @@ public class NacosServiceDiscovery implements ServiceDiscovery {
     public InetSocketAddress lookupService(String serviceName) throws RpcException {
         try {
             List<Instance> instances = NacosUtils.getAllInstance(serviceName);
-            Instance instance = loadBalancer.select(instances);
+            Instance instance = loadBalancer.selectService(instances);
+            log.info("use { {} } loadBalancer and select service address from {}: {}" ,loadBalancer.getClass().getName(), instance.getIp(), instance.getPort());
             return new InetSocketAddress(instance.getIp(), instance.getPort());
         } catch (NacosException e) {
             log.error("error occurred while fetching the service:{}",e.getMessage());
