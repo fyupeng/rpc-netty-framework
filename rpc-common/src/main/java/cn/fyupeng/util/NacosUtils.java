@@ -1,10 +1,15 @@
 package cn.fyupeng.util;
 
+import cn.fyupeng.enums.LoadBalancerCode;
+import cn.fyupeng.exception.RpcException;
+import cn.fyupeng.loadbalancer.LoadBalancer;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.naming.NamingFactory;
 import com.alibaba.nacos.api.naming.NamingService;
 import com.alibaba.nacos.api.naming.pojo.Instance;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.sun.media.jfxmedia.events.NewFrameEvent;
+import com.sun.xml.internal.bind.marshaller.NoEscapeHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -21,9 +26,10 @@ import java.util.*;
 @Slf4j
 public class NacosUtils {
 
-    private static String SERVER_ADDR = "127.0.0.1:8848";
-    private static final NamingService namingService;
     private static final Set<String> serviceNames = new HashSet<>();
+    private static LoadBalancer loadBalancer;
+    private static String SERVER_ADDR = "127.0.0.1:8848";
+    private static NamingService namingService;
     private static InetSocketAddress inetSocketAddress;
 
 
@@ -35,10 +41,20 @@ public class NacosUtils {
         // 使用InPutStream流读取properties文件
         String currentWorkPath = System.getProperty("user.dir");
         InputStream is = null;
-        String propertyValue = "";
+        String[] nodes = null;
+        String useCluster = "";
+        String balancer = "round";
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(currentWorkPath + "/config/resource.properties"));) {
             p.load(bufferedReader);
-            propertyValue = p.getProperty("cn.fyupeng.nacos.register-addr");
+            useCluster = p.getProperty("cn.fyupeng.nacos.cluster.use");
+            if (useCluster == null || "false".equals(useCluster)) {
+                log.info("cluster attribute is false and start with single mode");
+                nodes = new String[1];
+                nodes[0] = p.getProperty("cn.fyupeng.nacos.register-addr");
+            } else if ("true".equals(useCluster)) {
+                log.info("cluster attribute is true and start with cluster mode");
+                nodes = p.getProperty("cn.fyupeng.nacos.cluster.nodes").split("[;,|]");
+            }
             log.info("read resource from resource path: {}", currentWorkPath + "/config/resource.properties");
         } catch (IOException e) {
             log.info("not found resource from resource path: {}", currentWorkPath + "/config/resource.properties");
@@ -48,7 +64,16 @@ public class NacosUtils {
                 try {
                     p.load(is);
                     // 自定义 指定的注册中心地址，将覆盖默认地址
-                    propertyValue = p.getProperty("cn.fyupeng.nacos.register-addr");
+                    useCluster = p.getProperty("cn.fyupeng.nacos.cluster.use");
+                    if (useCluster == null || "false".equals(useCluster)) {
+                        log.info("cluster attribute is false and start with single mode");
+                        nodes = new String[1];
+                        nodes[0] = p.getProperty("cn.fyupeng.nacos.register-addr");
+                    } else if ("true".equals(useCluster)) {
+                        log.info("cluster attribute is true and start with cluster mode");
+                        balancer = p.getProperty("cn.fyupeng.nacos.cluster.load-balancer");
+                        nodes = p.getProperty("cn.fyupeng.nacos.cluster.nodes").split("[;,|]");
+                    }
                 } catch (IOException ex) {
                     log.error("load resource error: ", ex);
                 }
@@ -59,25 +84,57 @@ public class NacosUtils {
         int pre = -1;
         String host = "";
         Integer port = 0;
-        if ((pre = propertyValue.indexOf(":")) > 0 && pre == propertyValue.lastIndexOf(":")) {
-            boolean valid = IpUtils.valid(host = propertyValue.substring(0, pre));
-            if (valid) {
-                host = propertyValue.substring(0, pre);
-                port = Integer.parseInt(propertyValue.substring(pre + 1));
-                if (host.equals("localhost")) {
-                    SERVER_ADDR = "127.0.0.1:" + port;
-                } else {
-                    SERVER_ADDR = propertyValue;
-                }
-                log.info("Register center bind with address {}", propertyValue);
-            } else {
-                log.error("wrong ip address: {}", propertyValue);
+
+        String node = null;
+        do {
+            if ("random".equals(balancer)) {
+                loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.RANDOM.getCode());
+                log.info("use { {} } loadBalancer for select cluster nodes", loadBalancer.getClass().getName());
             }
-        } else if (!propertyValue.equals("")) {
-            log.error("wrong ip address: {}", propertyValue);
-        }
-        // 初始化 Nacos 注册中心服务接口
-        namingService = getNacosNamingService();
+            else if ("round".equals(balancer)) {
+                loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.ROUNDROBIN.getCode());
+                log.info("use { {} } loadBalancer for select cluster nodes", loadBalancer.getClass().getName());
+            }
+            try {
+                node = loadBalancer.selectNode(nodes);
+
+                if ((pre = node.indexOf(":")) > 0 && pre == node.lastIndexOf(":")) {
+                    boolean valid = IpUtils.valid(host = node.substring(0, pre));
+                    if (valid) {
+                        host = node.substring(0, pre);
+                        port = Integer.parseInt(node.substring(pre + 1));
+                        if (host.equals("localhost")) {
+                            SERVER_ADDR = "127.0.0.1:" + port;
+                        } else {
+                            SERVER_ADDR = node;
+                        }
+
+                    } else {
+                        log.error("wrong ip address: {}", node);
+                    }
+                } else if (!node.equals("")) {
+                    log.error("wrong ip address: {}", node);
+                }
+
+            } catch (RpcException e) {
+
+            }
+            // 初始化 Nacos 注册中心服务接口
+            namingService = getNacosNamingService();
+        } while (namingService.getServerStatus() == "DOWN");
+        if (namingService.getServerStatus() == "UP")
+            log.info("Register center bind with address {}", node);
+        else if (nodes != null && nodes.length == 1)
+            log.error("SingleTon Register Center is down from {}", SERVER_ADDR);
+        else if (nodes != null && nodes.length != 1) {
+            log.error("Cluster Register Center is down from ");
+            log.error("---");
+            for (int i = 0; i < nodes.length; i++) {
+                log.error("{}", nodes[i]);
+            }
+            log.error("---");
+        } else
+            log.error("Service occupy Internal Errors");
     }
 
 
