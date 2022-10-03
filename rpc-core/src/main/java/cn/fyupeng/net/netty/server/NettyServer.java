@@ -42,7 +42,7 @@ public class NettyServer extends AbstractRpcServer {
 
     public NettyServer(String hostName, int port, Integer serializerCode) throws RpcException {
         this.hostName = hostName.equals("localhost") || hostName.equals("127.0.0.1") ? IpUtils.getPubIpAddr() : hostName;
-        log.info("start with host: {}, port: {}", this.hostName, this.port);
+        log.info("start with host: {}, port: {}", this.hostName, port);
         this.port = port;
         serviceRegistry = new NacosServiceRegistry();
         serviceProvider = new DefaultServiceProvider();
