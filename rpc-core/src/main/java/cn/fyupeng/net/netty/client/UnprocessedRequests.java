@@ -26,7 +26,6 @@ public class UnprocessedRequests {
     * @param future 经过 CompletableFuture 包装过的 响应体
     */
    public void put(String requestId, CompletableFuture<RpcResponse> future) {
-      System.out.println("put" + future);
       unprocessedResponseFutures.put(requestId, future);
    }
 
@@ -41,7 +40,6 @@ public class UnprocessedRequests {
    public void complete(RpcResponse rpcResponse) {
       CompletableFuture<RpcResponse> completableFuture = unprocessedResponseFutures.remove(rpcResponse.getRequestId());
       completableFuture.complete(rpcResponse);
-      System.out.println("remove" + completableFuture);
    }
 
 

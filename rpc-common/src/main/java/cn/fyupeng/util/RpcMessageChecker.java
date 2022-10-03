@@ -45,7 +45,6 @@ public class RpcMessageChecker {
          * equals() 方法 判断 的 是 两个对象 的 值 相等 切忌 使用 !=
          */
         if (rpcResponse.getStatusCode() == null || !rpcResponse.getStatusCode().equals(ResponseCode.SUCCESS.getCode())) {
-            System.out.println(rpcResponse.getStatusCode().equals(ResponseCode.SUCCESS.getCode()));
             log.error("service call failed, service: {}",rpcRequest.getInterfaceName());
             throw new ReceiveResponseException("service call failed Exception");
         }
@@ -55,8 +54,6 @@ public class RpcMessageChecker {
          */
         try {
             String checkCode = "";
-            System.out.println(rpcResponse);
-            System.out.println(rpcResponse.getData());
             // data 为空 校验码为 null
             if(rpcResponse.getData() == null) {
                 checkCode = null;
