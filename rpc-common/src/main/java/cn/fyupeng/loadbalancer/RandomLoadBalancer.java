@@ -1,8 +1,8 @@
 package cn.fyupeng.loadbalancer;
 
-import com.alibaba.nacos.api.naming.pojo.Instance;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.exception.ServiceNotFoundException;
+import com.alibaba.nacos.api.naming.pojo.Instance;
 
 import java.util.List;
 import java.util.Random;
@@ -17,11 +17,19 @@ import java.util.Random;
 public class RandomLoadBalancer implements LoadBalancer{
 
     @Override
-    public Instance select(List<Instance> instances) throws RpcException {
+    public Instance selectService(List<Instance> instances) throws RpcException {
         if(instances.size() == 0 ) {
             throw new ServiceNotFoundException("service instances size is zero, can't provide service! please start server first!");
         }
         return instances.get(new Random().nextInt(instances.size()));
+    }
+
+    @Override
+    public String selectNode(String[] nodes) throws RpcException {
+        if(nodes.length == 0) {
+            throw new ServiceNotFoundException("service instances size is zero, can't provide service! please start server first!");
+        }
+        return nodes[new Random().nextInt(nodes.length)];
     }
 
 }
