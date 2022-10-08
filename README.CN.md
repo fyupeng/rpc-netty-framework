@@ -307,16 +307,17 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 
 原因是注册中心没有启动或者注册中心地址端口指定不明，或者因为防火墙问题，导致`Nacos`所在服务器的端口访问失败。
 
-- NotSuchMethodException
-抛出异常`java.lang.NoSuchMethodError:  org.slf4j.spi.LocationAwareLogger.log`
-
-出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0.0-jar-with-dependenceies.jar`中`org.apache.commons`包
-
 使用该框架时，需注意以下两点：
 
 (1) 支持注册本地地址，如 localhost或127.0.0.1，则注册地址会解析成公网地址；
 
 (2) 支持注册内网地址和外网地址，则地址为对应内网地址或外网地址，不会将其解析；
+
+- NotSuchMethodException
+抛出异常`java.lang.NoSuchMethodError:  org.slf4j.spi.LocationAwareLogger.log`
+
+出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0.0-jar-with-dependenceies.jar`中`org.apache.commons`包
+
 
 - DecoderException
 
