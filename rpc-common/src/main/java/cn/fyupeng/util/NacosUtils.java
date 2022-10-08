@@ -7,9 +7,6 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.naming.NamingFactory;
 import com.alibaba.nacos.api.naming.NamingService;
 import com.alibaba.nacos.api.naming.pojo.Instance;
-import com.fasterxml.jackson.databind.node.NullNode;
-import com.sun.media.jfxmedia.events.NewFrameEvent;
-import com.sun.xml.internal.bind.marshaller.NoEscapeHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -138,6 +135,10 @@ public class NacosUtils {
     }
 
 
+    /**
+     * 获取绑定的 Nacos 服务
+     * @return Nacos 服务
+     */
     public static NamingService getNacosNamingService() {
         try {
             return NamingFactory.createNamingService(SERVER_ADDR);
@@ -147,10 +148,22 @@ public class NacosUtils {
         }
     }
 
+    /**
+     * 获取配置中心中与服务名匹配的所有实例，可以通过使用负载均衡选择其中一个实例
+     * @param serviceName 服务名
+     * @return 实例列表
+     * @throws NacosException
+     */
     public static List<Instance> getAllInstance(String serviceName) throws  NacosException {
         return namingService.getAllInstances(serviceName);
     }
 
+    /**
+     * 将服务名与对应服务所在的地址注册到注册中心
+     * @param serviceName 服务名
+     * @param address 服务所在机器地址
+     * @throws NacosException
+     */
     public static void registerService(String serviceName, InetSocketAddress address) throws NacosException {
         namingService.registerInstance(serviceName, address.getHostName(), address.getPort());
         log.info("host: {} has been registered on Register Center", address.getHostName());
@@ -158,6 +171,9 @@ public class NacosUtils {
         serviceNames.add(serviceName);
     }
 
+    /**
+     * 清除服务启动所在地址下注册表所有服务项
+     */
     public static void clearRegistry() {
         if (!serviceNames.isEmpty() && inetSocketAddress != null) {
             String hostname = inetSocketAddress.getHostName();

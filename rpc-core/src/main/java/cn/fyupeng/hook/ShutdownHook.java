@@ -21,6 +21,9 @@ public class ShutdownHook {
         return shutdownHook;
     }
 
+    /**
+     * 添加清除钩子
+     */
     public void addClearAllHook() {
         log.info("All services will be cancel after shutdown");
         Runtime.getRuntime().addShutdownHook(new Thread(()->{

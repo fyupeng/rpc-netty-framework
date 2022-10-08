@@ -40,6 +40,13 @@ public class NettyServer extends AbstractRpcServer {
      */
     private final CommonSerializer serializer;
 
+    /**
+     *
+     * @param hostName 启动服务所在机器的主机号，可以是私网或者公网
+     * @param port 启动服务所在机器的端口号
+     * @param serializerCode 序列化代码
+     * @throws RpcException
+     */
     public NettyServer(String hostName, int port, Integer serializerCode) throws RpcException {
         this.hostName = hostName.equals("localhost") || hostName.equals("127.0.0.1") ? IpUtils.getPubIpAddr() : hostName;
         log.info("start with host: {}, port: {}", this.hostName, port);

@@ -27,6 +27,12 @@ public class NacosServiceDiscovery implements ServiceDiscovery {
         this.loadBalancer = loadBalancer;
     }
 
+    /**
+     * 查询匹配服务名的服务网络套接字地址
+     * @param serviceName 服务名
+     * @return 网络套接字地址
+     * @throws RpcException
+     */
     @Override
     public InetSocketAddress lookupService(String serviceName) throws RpcException {
         try {

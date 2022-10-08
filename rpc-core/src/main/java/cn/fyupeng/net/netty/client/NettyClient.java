@@ -78,6 +78,12 @@ public class NettyClient implements RpcClient {
                 .channel(NioSocketChannel.class);
     }
 
+    /**
+     * 发送请求
+     * @param rpcRequest 请求体
+     * @return 异步响应体，可使用get()方法在未来获取结果
+     * @throws RpcException
+     */
     @Override
     public CompletableFuture<RpcResponse> sendRequest(RpcRequest rpcRequest) throws RpcException {
         /**
