@@ -185,6 +185,9 @@ cn.fyupeng.nacos.register-addr=localhost:8848
 目前可注入的配置信息有：
 ```properties
 cn.fyupeng.nacos.register-addr=localhost:8848
+cn.fyupeng.nacos.cluster.use=true
+cn.fyupeng.nacos.cluster.load-balancer=random
+cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:8849
 ```
 
 #### 5.2 日志配置
@@ -269,6 +272,8 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 
 集群节点理论上允许无限扩展，可使用分隔符`[;,|]`扩展配置
 
+- 集群节点容错切换
+  - 节点宕机：遇到节点宕机将重新从节点配置列表中选举新的正常节点，否则无限重试
 
 ### 8. 异常解决
 - ServiceNotFoundException
@@ -363,13 +368,13 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#1.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.2/pom) ]：解耦注册中心的地址绑定，可到启动器所在工程项目的资源下配置`resource.properties`文件；
 
-- [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]：修`Jar`方式部署项目后注册到注册中心的服务未能被发现的问题，解耦`Jar`包启动配置文件的注入，约束名相同会覆盖项目原有配置信息；
+- [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]：修复`Jar`方式部署项目后注册到注册中心的服务未能被发现的问题，解耦`Jar`包启动配置文件的注入，约束名相同会覆盖项目原有配置信息；
 
 - [ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]：将心跳机制打印配置默认级别为`trace`，默认日志级别为`info`，需要开启到`logback.xml`启用。
 
 - [ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]：默认请求包大小为`4096`字节，扩容为`100000`字节，满足日常的`100000`字的数据包，不推荐发送大数据包，如有需求看异常`OutOfMemoryError`说明。
 
-- [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: 修复负载均衡未能正确均衡选择的问题，提供配置中心高可用集群节点注入配置、集群节点负载均衡配置
+- [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: 修复负载均衡出现`select`失败问题，提供配置中心高可用集群节点注入配置、负载均衡配置、容错自动切换
 
 ### 10. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！

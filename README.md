@@ -193,7 +193,9 @@ The currently injectable configuration information is:
 ````properties
 
 cn.fyupeng.nacos.register-addr=localhost:8848
-
+cn.fyupeng.nacos.cluster.use=true
+cn.fyupeng.nacos.cluster.load-balancer=random
+cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:8849
 ````
 
 #### 5.2 Log configuration
@@ -273,6 +275,9 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 - Cluster node load policy
   - `random`: random policy
   - `round`: polling policy
+
+- Cluster node fault-tolerant switching
+  - Node downtime: When a node is down, it will re-elect a new normal node from the node configuration list, otherwise it will retry infinitely
 
 Cluster nodes are theoretically infinitely scalable and can be extended using the separator `[;,|]`.
 
@@ -366,13 +371,13 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#1.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.2/pom) ]: Decoupled registry address binding, available to the launcher Configure the `resource.properties` file under the resources of the project where you are located;
 
-- [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]: After deploying the project in the `Jar` method, register it in the registry The problem that the service cannot be found, decoupling the `Jar` package to start the injection of the configuration file, the same constraint name will overwrite the original configuration information of the project.
+- [ [#1.0.4.RELEASE](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.4.RELEASE/pom) ]: Fixing the problem that services registered to the registry are not discovered after deploying the project in the `Jar` way, decoupling the injection of the `Jar` package startup configuration file, where the same constraint name will overwrite the original configuration information of the project.
 
 - [ [#1.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.5/pom) ]: The default level of the heartbeat mechanism printing configuration is `trace`, and the default log level is `info`, which needs to be enabled in `logback.xml`.
 
 - [ [#1.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.6/pom) ]: The default request packet size is `4096` Bytes, and the expansion is `100000` Bytes, meet the daily `100000` word data packets, it is not recommended to send large data packets, if necessary, see the exception `OutOfMemoryError` description.
 
-- [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: Fix the problem that load balancing fails to correctly balance the selection, provide configuration center high availability cluster node injection configuration, cluster node load balancing configuration
+- [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: Repair the problem of `select` failure in load balancing, provide configuration center highly available cluster node injection configuration, load balancing configuration, fault-tolerant automatic switching
 
 ### 10. Development Notes
 
