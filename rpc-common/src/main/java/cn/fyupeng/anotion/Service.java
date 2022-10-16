@@ -8,12 +8,16 @@ import java.lang.annotation.Target;
 /**
  * @Auther: fyp
  * @Date: 2022/3/28
- * @Description:
+ * @Description: 服务端服务配置
  * @Package: cn.fyupeng.anotion
  * @Version: 1.0
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Service {
+    /**
+     * 服务名
+     * @return
+     */
     public String name() default "";
 }
