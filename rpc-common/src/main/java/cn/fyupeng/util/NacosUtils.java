@@ -7,6 +7,7 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.naming.NamingFactory;
 import com.alibaba.nacos.api.naming.NamingService;
 import com.alibaba.nacos.api.naming.pojo.Instance;
+import com.alibaba.nacos.common.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -39,44 +40,101 @@ public class NacosUtils {
         String currentWorkPath = System.getProperty("user.dir");
         InputStream is = null;
         String[] nodes = null;
+        PropertyResourceBundle configResource = null;
         String useCluster = "";
         String balancer = "round";
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(currentWorkPath + "/config/resource.properties"));) {
-            p.load(bufferedReader);
-            useCluster = p.getProperty("cn.fyupeng.nacos.cluster.use");
-            if (useCluster == null || "false".equals(useCluster)) {
-                log.info("cluster attribute is false and start with single mode");
+
+            configResource = new PropertyResourceBundle(bufferedReader);
+            useCluster = configResource.getString(PropertiesConstants.NACOS_CLUSTER_USE);
+
+            if ("false".equals(useCluster) || "default".equals(useCluster) || StringUtils.isBlank(useCluster)) {
+                log.info("begin start with single mode");
                 nodes = new String[1];
-                nodes[0] = p.getProperty("cn.fyupeng.nacos.register-addr");
-            } else if ("true".equals(useCluster)) {
-                log.info("cluster attribute is true and start with cluster mode");
-                nodes = p.getProperty("cn.fyupeng.nacos.cluster.nodes").split("[;,|]");
-            }
-            log.info("read resource from resource path: {}", currentWorkPath + "/config/resource.properties");
-        } catch (IOException e) {
-            log.info("not found resource from resource path: {}", currentWorkPath + "/config/resource.properties");
-            is = NacosUtils.class.getClassLoader().getResourceAsStream("resource.properties");
-            if(is != null) {
-                log.info("read resource from resource path: {}", NacosUtils.class.getClassLoader().getResource("resource.properties").getPath());
                 try {
-                    p.load(is);
-                    // 自定义 指定的注册中心地址，将覆盖默认地址
-                    useCluster = p.getProperty("cn.fyupeng.nacos.cluster.use");
-                    if (useCluster == null || "false".equals(useCluster)) {
-                        log.info("cluster attribute is false and start with single mode");
-                        nodes = new String[1];
-                        nodes[0] = p.getProperty("cn.fyupeng.nacos.register-addr");
-                    } else if ("true".equals(useCluster)) {
-                        log.info("cluster attribute is true and start with cluster mode");
-                        balancer = p.getProperty("cn.fyupeng.nacos.cluster.load-balancer");
-                        nodes = p.getProperty("cn.fyupeng.nacos.cluster.nodes").split("[;,|]");
-                    }
-                } catch (IOException ex) {
-                    log.error("load resource error: ", ex);
+                    nodes[0] = configResource.getString(PropertiesConstants.NACOS_REGISTER_ADDR);
+                } catch (MissingResourceException registerAddException) {
+                    nodes[0] = SERVER_ADDR;
+                    log.warn("nacos register address attribute is missing");
+                    log.info("use default register address : " + SERVER_ADDR);
+                }
+            } else if ("true".equals(useCluster)) {
+                log.info("cluster mode attribute is true and start with cluster mode");
+                try {
+                    balancer = configResource.getString(PropertiesConstants.NACOS_LOAD_BALANCER);
+                } catch (MissingResourceException loadBalancerException) {
+                    log.info("nacos property attribute is missing: {}", loadBalancerException.getMessage());
+                    log.info("use default loadBalancer : " + balancer);
+                }
+                try {
+                    nodes = configResource.getString(PropertiesConstants.NACOS_CLUSTER_NODES).split("[;,|]");
+                } catch (MissingResourceException clusterNodesException) {
+                    log.error("nacos cluster nodes attribute is missing: ", clusterNodesException);
+                    throw new RuntimeException("nacos cluster nodes attribute is missing!");
                 }
             } else {
+                throw new RuntimeException("nacos cluster mode attribute is illegal!");
+            }
+            log.info("read resource from resource path: {}", currentWorkPath + "/config/resource.properties");
+        } catch (MissingResourceException clusterUseException) {
+            log.warn("nacos cluster use attribute is missing");
+            log.info("begin start with default single mode");
+            nodes = new String[1];
+            try {
+                String nacosRegisterAddr = configResource.getString(PropertiesConstants.NACOS_REGISTER_ADDR);
+                nodes[0] = StringUtils.isBlank(nacosRegisterAddr) ? SERVER_ADDR : nacosRegisterAddr;
+            } catch (MissingResourceException registerAddException) {
+                nodes[0] = SERVER_ADDR;
+                log.warn("nacos register address attribute is missing");
+                log.info("use default register address : " + SERVER_ADDR);
+            }
+        } catch (IOException ioException) {
+            log.info("not found resource from resource path: {}", currentWorkPath + "/config/resource.properties");
+            try {
+                ResourceBundle resource = ResourceBundle.getBundle("resource");
+
+                try {
+                    useCluster = resource.getString(PropertiesConstants.NACOS_CLUSTER_USE);
+
+                    if ("false".equals(useCluster) || "default".equals(useCluster) || StringUtils.isBlank(useCluster)) {
+                        log.info("begin start with default single mode");
+                        nodes = new String[1];
+                        try {
+                            String nacosRegisterAddr = resource.getString(PropertiesConstants.NACOS_REGISTER_ADDR);
+                            nodes[0] = StringUtils.isBlank(nacosRegisterAddr) ? SERVER_ADDR : nacosRegisterAddr;
+                        } catch (MissingResourceException registerAddException) {
+                            nodes[0] = SERVER_ADDR;
+                            log.warn("nacos register address attribute is missing");
+                            log.info("use default register address : " + SERVER_ADDR);
+                        }
+                    } else if ("true".equals(useCluster)) {
+                        log.info("cluster mode attribute is true and start with cluster mode");
+                        try {
+                            balancer = resource.getString(PropertiesConstants.NACOS_LOAD_BALANCER);
+                        } catch (MissingResourceException loadBalancerException) {
+                            log.info("nacos property attribute is missing: {}", loadBalancerException.getMessage());
+                            log.info("use default loadBalancer : " + balancer);
+                        }
+                        try {
+                            nodes = resource.getString(PropertiesConstants.NACOS_CLUSTER_NODES).split("[;,|]");
+                        } catch (MissingResourceException clusterNodesException) {
+                            log.error("nacos cluster nodes attribute is missing: ", clusterNodesException);
+                            throw new RuntimeException("nacos cluster nodes attribute is missing!");
+                    }
+                    } else {
+                        throw new RuntimeException("nacos cluster mode attribute is illegal!");
+                    }
+                } catch (MissingResourceException clusterUseException) {
+                    log.info("cluster mode attribute is missing and start with single mode");
+                    nodes = new String[1];
+                    nodes[0] = resource.getString(PropertiesConstants.NACOS_REGISTER_ADDR);
+                }
+
+            } catch (MissingResourceException resourceException) {
+                log.info("not found resource from resource path: {}", "resource.properties");
                 log.info("Register center bind with default address {}", SERVER_ADDR);
             }
+            log.info("read resource from resource path: {}", "resource.properties");
         }
         int pre = -1;
         String host = "";
@@ -86,14 +144,18 @@ public class NacosUtils {
         do {
             if ("random".equals(balancer)) {
                 loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.RANDOM.getCode());
-                log.info("use { {} } loadBalancer for select cluster nodes", loadBalancer.getClass().getName());
+                log.info("use { {} } loadBalancer", loadBalancer.getClass().getName());
             }
             else if ("round".equals(balancer)) {
                 loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.ROUNDROBIN.getCode());
-                log.info("use { {} } loadBalancer for select cluster nodes", loadBalancer.getClass().getName());
+                log.info("use { {} } loadBalancer", loadBalancer.getClass().getName());
+            } else {
+                log.error("naocs cluster loadBalancer attribute is illegal!");
+                throw new RuntimeException("naocs cluster loadBalancer attribute is illegal!");
             }
             try {
                 node = loadBalancer.selectNode(nodes);
+                log.info("waiting for connection to the registration center...");
 
                 if ((pre = node.indexOf(":")) > 0 && pre == node.lastIndexOf(":")) {
                     boolean valid = IpUtils.valid(host = node.substring(0, pre));
@@ -191,5 +253,5 @@ public class NacosUtils {
         }
     }
 
-
 }
+
