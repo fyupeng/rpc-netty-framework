@@ -1,6 +1,8 @@
 package cn.fyupeng.proxy;
 
 
+import cn.fyupeng.anotion.Reference;
+import cn.fyupeng.anotion.Service;
 import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.net.netty.client.NettyClient;
 import cn.fyupeng.net.socket.client.SocketClient;
@@ -9,6 +11,7 @@ import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.util.RpcMessageChecker;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -33,17 +36,34 @@ public class RpcClientProxy implements InvocationHandler {
    */
    private RpcClient rpcClient;
 
+   /**
+    * 需要获取的成员所在类
+    */
+   private Class<?> pareClazz = null;
+
+   /**
+    * @param rpcClient
+    */
    public RpcClientProxy(RpcClient rpcClient) {
       this.rpcClient = rpcClient;
    }
 
-   /**
-    * public RpcClientProxy(String hostName, int port) {
-      this.hostName = hostName;
-      this.port = port;
-   }
-    */
 
+   /**
+    * 用于可 超时重试 的动态代理
+    * @param pareClazz
+    * @param <T>
+    * @return
+    */
+   public <T> T getProxy(Class<T> clazz, Class<?> pareClazz){
+      this.pareClazz = pareClazz;
+      return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[] {clazz}, this);
+   }
+
+   /**
+    用于普通动态代理
+    */
+   @Deprecated
    public <T> T getProxy(Class<T> clazz){
       return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[] {clazz}, this);
    }
@@ -67,14 +87,75 @@ public class RpcClientProxy implements InvocationHandler {
 
       RpcResponse rpcResponse = null;
 
-      if (rpcClient instanceof NettyClient) {
-         CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
-         rpcResponse = completableFuture.get();
+      if (pareClazz == null) {
+         if (rpcClient instanceof NettyClient) {
+            CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+            rpcResponse = completableFuture.get();
+         }
+         if (rpcClient instanceof SocketClient) {
+            rpcResponse = (RpcResponse) rpcClient.sendRequest(rpcRequest);
+         }
+         RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
+         return rpcResponse.getData();
       }
+
+      if (rpcClient instanceof NettyClient) {
+         /**
+          * 重试机制实现
+          */
+
+         Field[] fields = pareClazz.getDeclaredFields();
+         long timeout = 0L;
+         int retries = 0;
+         boolean useRetry = false;
+
+         /**
+          * 匹配该代理方法所调用 的服务实例，是则获取相关注解信息 并跳出循环
+          */
+         for (Field field : fields) {
+            if (field.isAnnotationPresent(Reference.class) && method.getDeclaringClass().getName().equals(field.getType().getName())) {
+               retries = field.getAnnotation(Reference.class).retries();
+               timeout = field.getAnnotation(Reference.class).timeout();
+               useRetry = true;
+               break;
+            }
+         }
+
+         if (!useRetry) {
+            CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+            rpcResponse = completableFuture.get();
+            RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
+         } else {
+
+            log.info("invoke method proxy timeout is {} ms", timeout);
+
+            for (int i = 0; i <= retries; i++) {
+               long startTime = System.currentTimeMillis();
+
+               CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+               rpcResponse = completableFuture.get();
+
+               long endTime = System.currentTimeMillis();
+               long handleTime = endTime - startTime;
+               log.info("invoke method has run time {} ms", handleTime);
+               if (handleTime >= timeout) {
+                  // 超时重试
+                  log.warn("invoke method timeout!");
+               } else {
+                  // 没有超时不用再重试
+                  // 进一步校验包
+                  if (RpcMessageChecker.check(rpcRequest, rpcResponse))
+                     break;
+               }
+            }
+         }
+
+      }
+
       if (rpcClient instanceof SocketClient) {
          rpcResponse = (RpcResponse) rpcClient.sendRequest(rpcRequest);
+         RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
       }
-      RpcMessageChecker.check(rpcRequest, rpcResponse);
       return rpcResponse.getData();
    }
 }
