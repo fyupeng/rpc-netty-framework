@@ -39,7 +39,7 @@ public class NettyClient implements RpcClient {
     private int port;
     private ServiceDiscovery serviceDiscovery;
 
-    private UnprocessedRequests unprocessedRequests;
+    private static UnprocessedRequests unprocessedRequests;
 
     /**
      * 采用直连模式

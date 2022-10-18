@@ -20,13 +20,20 @@ public class UnprocessedRequests {
     * v - 可将来获取 的 response
     */
    private static ConcurrentMap<String, CompletableFuture<RpcResponse>> unprocessedResponseFutures = new ConcurrentHashMap<>();
+   private static ConcurrentMap<String, Integer> unprocessedResponseReentrantCounts = new ConcurrentHashMap<>();
 
    /**
     * @param requestId 请求体的 requestId 字段
     * @param future 经过 CompletableFuture 包装过的 响应体
     */
    public void put(String requestId, CompletableFuture<RpcResponse> future) {
+      Integer reentrantCount = unprocessedResponseReentrantCounts.get(requestId);
+      if (unprocessedResponseFutures.containsKey(requestId)) {
+         unprocessedResponseReentrantCounts.put(requestId, reentrantCount + 1);
+         return;
+      }
       unprocessedResponseFutures.put(requestId, future);
+      unprocessedResponseReentrantCounts.put(requestId, 0);
    }
 
    /**
@@ -34,14 +41,25 @@ public class UnprocessedRequests {
     * @param requestId 请求体的 requestId 字段
     */
    public void remove(String requestId) {
+      Integer reentrantCount = unprocessedResponseReentrantCounts.get(requestId);
+      if (unprocessedResponseFutures.containsKey(requestId) && reentrantCount > 0) {
+         unprocessedResponseReentrantCounts.put(requestId, reentrantCount - 1);
+         return;
+      }
       unprocessedResponseFutures.remove(requestId);
    }
 
    public void complete(RpcResponse rpcResponse) {
+      String requestId = rpcResponse.getRequestId();
+      Integer reentrantCount = unprocessedResponseReentrantCounts.get(requestId);
+      if (unprocessedResponseFutures.containsKey(requestId) && reentrantCount > 0) {
+         unprocessedResponseReentrantCounts.put(requestId, reentrantCount - 1);
+         CompletableFuture<RpcResponse> completableFuture = unprocessedResponseFutures.get(requestId);
+         completableFuture.complete(rpcResponse);
+         return;
+      }
       CompletableFuture<RpcResponse> completableFuture = unprocessedResponseFutures.remove(rpcResponse.getRequestId());
       completableFuture.complete(rpcResponse);
    }
-
-
 
 }
