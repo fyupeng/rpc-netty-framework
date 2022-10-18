@@ -12,6 +12,9 @@ import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 
+import java.util.HashMap;
+import java.util.HashSet;
+
 /**
  * @Auther: fyp
  * @Date: 2022/3/24
@@ -23,13 +26,28 @@ import org.apache.commons.codec.digest.DigestUtils;
 public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
 
     private static RequestHandler requestHandler;
+    /**
+     * 超时重试请求id 集
+     */
+    private static HashSet<String> timeoutRetryRequestIdSet = new HashSet<>();
+
+    /**
+     * 保存上一次的请求执行 结果
+     */
+    // 多线程可超时幂等性处理
+    private static HashMap<String, Object> resMap = new HashMap<>();
 
     static {
         requestHandler = new RequestHandler();
     }
 
 
-
+    /**
+     * 服务器的监听通道读取方法是 多线程的，这样能应对多个 客户端的并发访问
+     * @param ctx 通道处理上下文
+     * @param msg 请求包
+     * @throws Exception
+     */
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
         try {
@@ -41,7 +59,23 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 return;
             }
             log.info("server has received request: {}", msg);
-            Object result = requestHandler.handler(msg);
+
+            // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
+            /**
+             * 这里要防止重试
+             * 分为两种情况
+             * 1. 如果是 客户端发送给服务端 途中出现问题，请求包之前 服务器未获取到，也就是 唯一请求id号 没有重复
+             * 2. 如果是 服务端发回客户端途中出现问题，导致客户端触发 超时重试，这时服务端会 接收 重试请求包，也就是有 重复请求id号
+             */
+            // 请求id 为第一次请求 id
+            Object result = null;
+            if (timeoutRetryRequestIdSet.add(msg.getRequestId())) {
+                result = requestHandler.handler(msg);
+                resMap.put(msg.getRequestId(), result);
+            //请求id 为第二次或以上请求
+            } else {
+                result = resMap.get(msg.getRequestId());
+            }
             // 生成 校验码，客户端收到后 会 对 数据包 进行校验
             if (ctx.channel().isActive() && ctx.channel().isWritable()) {
                 /**
@@ -56,8 +90,27 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 } else {
                     checkCode = null;
                 }
+
                 RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(),checkCode);
                 ChannelFuture future = ctx.writeAndFlush(rpcResponse);
+
+                /**
+                 * 大于 1000 条请求id 时，及时清除不用的请求 id
+                 * 保存此时 服务接收的请求 id
+                 * 考虑多线程中 对其他 线程刚添加的请求id 进行清除的影响
+                 */
+                if (timeoutRetryRequestIdSet.size() >= 1000) {
+                    synchronized (this) {
+                        if (timeoutRetryRequestIdSet.size() >= 1000) {
+                            timeoutRetryRequestIdSet.clear();
+                            resMap.clear();
+                            timeoutRetryRequestIdSet.add(msg.getRequestId());
+                            resMap.put(msg.getRequestId(), result);
+                        }
+                    }
+                }
+
+
             } else {
                 log.error("channel is not writable");
             }
