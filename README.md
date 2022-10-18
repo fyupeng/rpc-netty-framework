@@ -342,7 +342,7 @@ Implementation idea: you need to use `HashSet` and `HashMap` to store the reques
   
 Because of concurrency considerations, garbage disposal using double-check lock, that is, through the if judgment Set threshold and `synchronized` keyword used in conjunction to achieve.
 
-> 核心代码
+> Core code implementations:
 ```java
 /**
              * 这里要防止重试
