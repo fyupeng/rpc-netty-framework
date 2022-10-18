@@ -53,7 +53,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        log.error("error occurred while invoking,info:", cause);
+        log.error("error occurred while invoking, error information:", cause);
         ctx.close();
     }
 
