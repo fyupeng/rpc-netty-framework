@@ -12,7 +12,11 @@ import java.lang.annotation.Target;
  * @Package: cn.fyupeng.anotion
  * @Version: 1.0
  */
-@Target({ElementType.FIELD, ElementType.METHOD})
+
+/**
+ * 用于服务代理的注解，只能对成员变量使用
+ */
+@Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Reference {
    /**
@@ -22,14 +26,22 @@ public @interface Reference {
    public String name() default "";
 
    /**
-    * 重试次数
+    * 重试次数，服务端未能在超时时间内 响应，允许触发超时的次数
     * @return
     */
-   public int retries() default 0;
+   public int retries() default 2;
 
    /**
-    * 超时时间
+    * 超时时间，即 客户端最长允许等待 服务端时长，超时即触发重试机制
     * @return
     */
-   public long timeout() default 0;
+   public long timeout() default 2000;
+
+   /**
+    * 异步时间，即等待服务端异步响应的时间
+    * 只在超时重试机制使用，非超时重试情况下默认使用 阻塞等待方式
+    * @return
+    */
+   public long asyncTime() default 3000;
+
 }
