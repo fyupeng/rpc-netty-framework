@@ -151,7 +151,7 @@ public class MyServer {
 ```
 > Note: Add the annotations `cn.fyupeng.Service` and `cn.fyupeng.ServiceScan` to be scanned by the automatic discovery service and registered to nacos
 
-### 5. Start com.fyupeng.Client
+### 5. Start Client
 There are two ways to connect to the server when initializing the client:
 
 - Direct connection
@@ -281,7 +281,87 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 
 Cluster nodes are theoretically infinitely scalable and can be extended using the separator `[;,|]`.
 
-### 8. exception resolution
+### 8. Timeout retry mechanism
+The retry mechanism is not used by default, in order to ensure the correctness of the service, because there is no guarantee of idempotency.
+
+The reason is that the client cannot detect whether there is a problem in the client's network transmission or a problem in the server's network transmission on the way back after receiving correctly, because if the former is the case, then retrying can guarantee idempotency, but if the latter is the case, it may lead to multiple executions of the same service, which is a non-consistent result for the client.
+
+Timeout retry processing can lead to idempotency problem, so we use `HashSet` to add request `id` to do timeout processing in the server:
+- Timeout retry: `cn.fyupeng.anotion.Reference` annotation provides three configuration parameters: retry count, timeout time and asynchronous time, where
+- Number of retries: the number of times the server fails to respond within the timeout period and is allowed to trigger a timeout
+- Timeout time: the maximum time allowed for the client to wait for the server, and the timeout triggers the retry mechanism
+- Asynchronous time: the time to wait for the asynchronous response from the server, and can only be used in the timeout retry mechanism, the default use of non-timeout retry blocking wait mode
+
+> For Example:
+```java
+private static RandomLoadBalancer randomLoadBalancer = new RandomLoadBalancer();
+    private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.KRYO_SERIALIZER);
+    private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
+
+    @Reference(retries = 2, timeout = 1000, asyncTime = 3000)
+    private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
+```
+The implementation of retry is not difficult either, just use `proxy + for + arguments` to implement it.
+> Core code implementations:
+```java
+for (int i = 0; i <= retries; i++) {
+    long startTime = System.currentTimeMillis();
+
+    CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+    try {
+        rpcResponse = completableFuture.get(asyncTime, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+        // 忽视 超时引发的异常，自行处理，防止程序中断
+        timeoutRes.incrementAndGet();
+        if (timeout >= asyncTime) {
+            log.warn("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
+        }
+        continue;
+    }
+
+    long endTime = System.currentTimeMillis();
+    long handleTime = endTime - startTime;
+    if (handleTime >= timeout) {
+        // 超时重试
+        log.warn("invoke service timeout and retry to invoke");
+    } else {
+        // 没有超时不用再重试
+        // 进一步校验包
+        if (RpcMessageChecker.check(rpcRequest, rpcResponse)) {
+            res.incrementAndGet();
+            return rpcResponse.getData();
+        }
+    }
+}
+```
+- Idempotency
+
+The retry mechanism server has to guarantee the principle of executing the retry package once, that is, to achieve idempotency
+  
+Implementation idea: you need to use `HashSet` and `HashMap` to store the request `id` of the retry request package and the execution result of the last request, how to determine whether to retry can be added by the `add` method of the `Set` collection, add failure is the retry package, the request `id` corresponding to the last request should return the result to the client, the last step is to do Garbage cleanup.
+  
+Because of concurrency considerations, garbage disposal using double-check lock, that is, through the if judgment Set threshold and `synchronized` keyword used in conjunction to achieve.
+
+> 核心代码
+```java
+/**
+             * 这里要防止重试
+             * 分为两种情况
+             * 1. 如果是 客户端发送给服务端 途中出现问题，请求包之前 服务器未获取到，也就是 唯一请求id号 没有重复
+             * 2. 如果是 服务端发回客户端途中出现问题，导致客户端触发 超时重试，这时服务端会 接收 重试请求包，也就是有 重复请求id号
+             */
+            // 请求id 为第一次请求 id
+            Object result = null;
+            if (timeoutRetryRequestIdSet.add(msg.getRequestId())) {
+                result = requestHandler.handler(msg);
+                resMap.put(msg.getRequestId(), result);
+            //请求id 为第二次或以上请求
+            } else {
+                result = resMap.get(msg.getRequestId());
+            }
+```
+
+### 9. exception resolution
 - ServiceNotFoundException
 
 Throws exception `ServiceNotFoundException`
@@ -363,7 +443,15 @@ For example: KryoSerializer can override the size of the write cache in the `ser
 Output output = new Output(byteArrayOutputStream,100000))
 ````
 
-### 9. Version Tracking
+- RetryTimeoutExcepton
+
+Throw exception `cn.fyupeng.exception.AnnotationMissingException`.
+
+After the retry mechanism is enabled, if the client fails to invoke the service after the number of retries, the service is considered unavailable and a timeout retry exception is thrown.
+
+After the exception is thrown, the thread will be interrupted and the tasks not yet executed by the thread will be terminated, and if the retry mechanism is not enabled by default, the exception will not be thrown.
+
+### 10. Version Tracking
 
 #### Version 1.0
 

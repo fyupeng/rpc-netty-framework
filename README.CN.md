@@ -275,7 +275,72 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 - 集群节点容错切换
   - 节点宕机：遇到节点宕机将重新从节点配置列表中选举新的正常节点，否则无限重试
 
-### 8. 异常解决
+### 8. 超时重试机制
+
+默认不使用重试机制，为了保证服务的正确性，因为无法保证幂等性。
+
+原因是客户端无法探测是客户端网络传输过程出现问题，或者是服务端正确接收后返回途中网络传输出现问题，因为如果是前者那么重试后能保证幂等性，如果为后者，可能将导致多次同个业务的执行，这对客户端来说结果是非一致的。
+
+超时重试处理会导致出现幂等性问题，因此在服务器中利用`HashSet`添加请求`id`来做超时处理
+
+- 超时重试：`cn.fyupeng.anotion.Reference`注解提供重试次数、超时时间和异步时间三个配置参数，其中：
+  - 重试次数：服务端未能在超时时间内 响应，允许触发超时的次数
+  - 超时时间：即客户端最长允许等待 服务端时长，超时即触发重试机制
+  - 异步时间：即等待服务端异步响应的时间，且只能在超时重试机制使用，非超时重试情况下默认使用阻塞等待方式
+
+> 示例：
+```java
+private static RandomLoadBalancer randomLoadBalancer = new RandomLoadBalancer();
+    private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.KRYO_SERIALIZER);
+    private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
+
+    @Reference(retries = 2, timeout = 1000, asyncTime = 3000)
+    private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
+```
+重试的实现也不难，采用`代理 + for + 参数`来实现即可。
+> 核心代码实现：
+```java
+for (int i = 0; i <= retries; i++) {
+    long startTime = System.currentTimeMillis();
+
+    CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+    try {
+        rpcResponse = completableFuture.get(asyncTime, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+        // 忽视 超时引发的异常，自行处理，防止程序中断
+        timeoutRes.incrementAndGet();
+        if (timeout >= asyncTime) {
+            log.warn("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
+        }
+        continue;
+    }
+
+    long endTime = System.currentTimeMillis();
+    long handleTime = endTime - startTime;
+    if (handleTime >= timeout) {
+        // 超时重试
+        log.warn("invoke service timeout and retry to invoke");
+    } else {
+        // 没有超时不用再重试
+        // 进一步校验包
+        if (RpcMessageChecker.check(rpcRequest, rpcResponse)) {
+            res.incrementAndGet();
+            return rpcResponse.getData();
+        }
+    }
+}
+```
+
+- 幂等性
+
+重试机制服务端要保证重试包的一次执行原则，即要实现幂等性
+
+实现思路：需要借助`HashSet`和`HashMap`来存放超时重试请求包的请求`id`和上一次请求执行结果，如何判定是否重试即可通过`Set`集合的`add`方法添加，添加失败即为重试包，将请求`id`对应上一次请求应返回结果返回给客户端即可，最后一步是做垃圾清理。
+
+由于考虑并发性，垃圾处理使用双重校验锁，即通过if判断Set阈值和`synchronized`关键字配合使用来实现。
+
+
+### 9. 异常解决
 - ServiceNotFoundException
 
 抛出异常`ServiceNotFoundException`
@@ -360,7 +425,15 @@ cn.fyupeng.net.AbstractRpcServer [main] - mainClassName: jdk.internal.reflect.Di
 Output output = new Output(byteArrayOutputStream,100000))
 ```
 
-### 9. 版本追踪
+- RetryTimeoutExcepton
+
+抛出异常`cn.fyupeng.exception.AnnotationMissingException`
+
+在启用重试机制后，客户端超过重试次数仍未能成功调用服务，即可认为服务不可用，并抛出超时重试异常。
+
+抛出该异常后，将中断该线程，其线程还未执行的任务将终止，默认不会开启重试机制，则不会抛出该异常。
+
+### 10. 版本追踪
 
 #### 1.0版本
 
@@ -376,7 +449,7 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: 修复负载均衡出现`select`失败问题，提供配置中心高可用集群节点注入配置、负载均衡配置、容错自动切换
 
-### 10. 开发说明
+### 11. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！
 
 
