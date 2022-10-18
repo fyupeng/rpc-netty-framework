@@ -204,16 +204,16 @@ Add `logback.xml` to `resources`
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <!--%date{HH:mm:ss.SSS} %c -->
-            <pattern>%date{HH:mm:ss.SSS} %c [%t] - %m%n</pattern>
-        </encoder>
-    </appender>
+  <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <!--%date{HH:mm:ss.SSS} %c -->
+      <pattern>%date{HH:mm:ss.SSS} [%level] %c [%t] - %m%n</pattern>
+    </encoder>
+  </appender>
 
-    <root level="info">
-        <appender-ref ref="console"/>
-    </root>
+  <root level="info">
+    <appender-ref ref="console"/>
+  </root>
 </configuration>
 ```
 In addition, the framework also provides Rpc services in `Socket` mode

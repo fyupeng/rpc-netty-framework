@@ -196,16 +196,16 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <!--%date{HH:mm:ss.SSS} %c -->
-            <pattern>%date{HH:mm:ss.SSS} %c [%t] - %m%n</pattern>
-        </encoder>
-    </appender>
+  <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <!--%date{HH:mm:ss.SSS} %c -->
+      <pattern>%date{HH:mm:ss.SSS} [%level] %c [%t] - %m%n</pattern>
+    </encoder>
+  </appender>
 
-    <root level="info">
-        <appender-ref ref="console"/>
-    </root>
+  <root level="info">
+    <appender-ref ref="console"/>
+  </root>
 </configuration>
 ```
 除此之外，框架还提供了 Socket 方式的 Rpc 服务
