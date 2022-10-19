@@ -459,7 +459,7 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 #### 2.0版本
 
-- [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]：优化1.0版本版本，2.0版本问世超时重试机制，使用到幂等性来解决业务损失问题，提高业务可靠性。
+- [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]：优化1.0版本，2.0版本问世超时重试机制，使用到幂等性来解决业务损失问题，提高业务可靠性。
 
 
 ### 11. 开发说明
