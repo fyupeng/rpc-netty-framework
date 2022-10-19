@@ -93,10 +93,18 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>1.0.4.RELEASE</version>
+    <version>1.0.10</version>
 </dependency>
 ```
-
+阿里仓库10月份开始处于系统升级，有些版本还没同步过去，推荐另一个`maven`官方仓库：
+```xml
+<mirror>
+  <id>repo1maven</id>
+  <mirrorOf>*</mirrorOf>
+  <name>maven公共仓库</name>
+  <url>https://repo1.maven.org/maven2</url>
+</mirror>
+```
 ### 2. 启动 Nacos
 
 `-m:模式`，`standalone:单机`

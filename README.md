@@ -94,10 +94,19 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
 
 ```xml
 <dependency>
-    <groupId>cn.fyupeng</groupId>
-    <artifactId>rpc-core</artifactId>
-    <version>1.0.4.RELEASE</version>
+  <groupId>cn.fyupeng</groupId
+  <artifactId>rpc-core</artifactId>
+  <version>1.0.10</version>
 </dependency>
+```
+Ali repository in October began in the system upgrade, some versions have not been synchronized, recommend another `maven` official repository
+```xml
+<mirror>
+  <id>repo1maven</id>
+  <mirrorOf>*</mirrorOf>
+  <name>maven public repository</name
+  <url>https://repo1.maven.org/maven2</url
+</mirror>
 ```
 
 ### 2. Start Nacos 
