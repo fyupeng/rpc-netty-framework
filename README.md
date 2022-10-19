@@ -7,14 +7,17 @@
 ![Version](https://img.shields.io/static/v1?label=LICENCE&message=MIT&color=brightgreen)
 
 A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md)
-### 1. server
-- Load Balancing Strategy
-- Serialization Strategy
-- Automatic Discovery And Logout Of Services
+### 1. service provisioning
+- Load Balancing Policy
+- Serialization policy
+- Auto-discovery and logout services
 - Registration Center
-### 2. Security
-- Heartbeat Mechanism
-- Information Summary
+- Standalone and Cluster
+### 2. Security Policies
+- Heartbeat mechanism
+- Message digest
+- Timeout retry mechanism
+- Idempotency
 ### 3. Design Patterns
 - Singleton Pattern
 - Dynamic Proxy
@@ -66,7 +69,8 @@ Using the `CompletableFuture` concurrency tool class born in java8, it can proce
 - accomplish
 
 The data is transmitted in the channel `channel` between the server and the client. The client sends a request packet to the channel and needs to wait for the server to return. In this case, you can use `CompletableFuture` as the return result, just let the client read the After the data, the result is put in the value through the `complete()` method, and the result is obtained through the `get()` method in the future.
-## Quick Start
+
+### 4. RNF Protocol
 ```java
 /**
      * custom object header protocol 16 bytes
@@ -85,6 +89,9 @@ The data is transmitted in the channel `channel` between the server and the clie
      * +---------------+---------------+-----------------+-------------+
      */
 ```
+
+## Quick Start
+
 ### 1.Dependences
 
 #### 1.1 Direct Import
@@ -356,7 +363,7 @@ The retry mechanism server has to guarantee the principle of executing the retry
   
 Implementation idea: you need to use `HashSet` and `HashMap` to store the request `id` of the retry request package and the execution result of the last request, how to determine whether to retry can be added by the `add` method of the `Set` collection, add failure is the retry package, the request `id` corresponding to the last request should return the result to the client, the last step is to do Garbage cleanup.
   
-Because of concurrency considerations, garbage disposal using double-check lock, that is, through the if judgment Set threshold and `synchronized` keyword used in conjunction to achieve.
+Because of concurrency considerations, garbage disposal using double-check lock, that is, through the `if` judgment `Set` threshold and `synchronized` keyword used in conjunction to achieve.
 
 > Core code implementations:
 ```java
