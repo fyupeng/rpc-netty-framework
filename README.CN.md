@@ -1,5 +1,13 @@
 ## 介绍
+
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.0.0&color=brightgreen)
+![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
+![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
+![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.20.Final&color=blueviolet)
+![Version](https://img.shields.io/static/v1?label=LICENCE&message=MIT&color=brightgreen)
+
 一个分布式微服务RPC框架 | [英文说明文档](README.md)
+
 ### 1. 服务提供
 - 负载均衡策略
 - 序列化策略

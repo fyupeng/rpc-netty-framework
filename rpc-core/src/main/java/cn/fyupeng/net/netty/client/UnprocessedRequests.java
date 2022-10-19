@@ -23,6 +23,7 @@ public class UnprocessedRequests {
    private static ConcurrentMap<String, Integer> unprocessedResponseReentrantCounts = new ConcurrentHashMap<>();
 
    /**
+    * 订阅
     * @param requestId 请求体的 requestId 字段
     * @param future 经过 CompletableFuture 包装过的 响应体
     */
@@ -49,6 +50,10 @@ public class UnprocessedRequests {
       unprocessedResponseFutures.remove(requestId);
    }
 
+   /**
+    * 通知
+    * @param rpcResponse 响应体
+    */
    public void complete(RpcResponse rpcResponse) {
       String requestId = rpcResponse.getRequestId();
       Integer reentrantCount = unprocessedResponseReentrantCounts.get(requestId);
