@@ -4,19 +4,19 @@
 
 1. 用户访问客户端：GET http://localhost:8081/user/hello?name="张三来访"
 
-![image-20221020170500139](C:\Users\fyp01\AppData\Roaming\Typora\typora-user-images\image-20221020170500139.png)
+![image-20221020170500139](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/image-20221020170500139.png)
 
 1. 浏览器访问客户端：
 
-![image-20221020170622580](C:\Users\fyp01\AppData\Roaming\Typora\typora-user-images\image-20221020170622580.png)
+![image-20221020170622580](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/image-20221020170622580.png)
 
 服务端接收情况：
 
-![image-20221020170428236](C:\Users\fyp01\AppData\Roaming\Typora\typora-user-images\image-20221020170428236.png)
+![image-20221020170428236](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/image-20221020170428236.png)
 
 服务端负载注册服务：
 
-![image-20221020170833644](C:\Users\fyp01\AppData\Roaming\Typora\typora-user-images\image-20221020170833644.png)
+![image-20221020170833644](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/image-20221020170833644.png)
 
 上面的实现就好比客户端只拿到服务端的api接口，加上配置中心地址即可调用远程服务！
 
@@ -45,24 +45,24 @@
 </profiles>
 
 <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>2.1.2.RELEASE</version>
-    <relativePath/>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-parent</artifactId>
+<version>2.1.2.RELEASE</version>
+<relativePath/>
 </parent>
 <dependencies>
-    <!-- 与 logbakc 整合 -->
-    <dependency>
-        <groupId>org.projectlombok</groupId>
-        <artifactId>lombok</artifactId>
-        <version>1.18.10</version>
-    </dependency>
-    <!-- 日志框架 -->
-    <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>1.2.3</version>
-    </dependency>
+<!-- 与 logbakc 整合 -->
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.10</version>
+</dependency>
+<!-- 日志框架 -->
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+    <version>1.2.3</version>
+</dependency>
 </dependencies>
 ```
 
@@ -90,12 +90,12 @@
 </dependencies>
 
 <build>
-    <plugins>
-        <plugin>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-maven-plugin</artifactId>
-        </plugin>
-    </plugins>
+<plugins>
+    <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+    </plugin>
+</plugins>
 </build>
 ```
 
@@ -376,10 +376,10 @@ import cn.fyupeng.service.HelloService;
 
 @Service
 public class HelloServiceImpl implements HelloService {
-   @Override
-   public String sayHello(String name) {
-      return "hello, my name is " + name;
-   }
+    @Override
+    public String sayHello(String name) {
+        return "hello, my name is " + name;
+    }
 }
 
 ```
