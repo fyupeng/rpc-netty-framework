@@ -6,7 +6,7 @@
 ![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.20.Final&color=blueviolet)
 ![Version](https://img.shields.io/static/v1?label=LICENCE&message=MIT&color=brightgreen)
 
-一个分布式微服务RPC框架 | [英文说明文档](README.md)
+一个分布式微服务RPC框架 | [英文说明文档](README.md) | [SpringBoot整合RPC](springboot整合rpc-netty-framework.md)
 
 ### 1. 服务提供
 - 负载均衡策略
