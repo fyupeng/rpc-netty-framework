@@ -141,18 +141,18 @@ public class NacosUtils {
         Integer port = 0;
 
         String node = null;
+        if ("random".equals(balancer)) {
+            loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.RANDOM.getCode());
+            log.info("use { {} } loadBalancer", loadBalancer.getClass().getName());
+        }
+        else if ("round".equals(balancer)) {
+            loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.ROUNDROBIN.getCode());
+            log.info("use { {} } loadBalancer", loadBalancer.getClass().getName());
+        } else {
+            log.error("naocs cluster loadBalancer attribute is illegal!");
+            throw new RuntimeException("naocs cluster loadBalancer attribute is illegal!");
+        }
         do {
-            if ("random".equals(balancer)) {
-                loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.RANDOM.getCode());
-                log.info("use { {} } loadBalancer", loadBalancer.getClass().getName());
-            }
-            else if ("round".equals(balancer)) {
-                loadBalancer = LoadBalancer.getByCode(LoadBalancerCode.ROUNDROBIN.getCode());
-                log.info("use { {} } loadBalancer", loadBalancer.getClass().getName());
-            } else {
-                log.error("naocs cluster loadBalancer attribute is illegal!");
-                throw new RuntimeException("naocs cluster loadBalancer attribute is illegal!");
-            }
             try {
                 node = loadBalancer.selectNode(nodes);
                 log.info("waiting for connection to the registration center...");
