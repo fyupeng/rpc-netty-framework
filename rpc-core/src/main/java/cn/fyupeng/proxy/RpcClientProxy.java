@@ -156,7 +156,7 @@ public class RpcClientProxy implements InvocationHandler {
                long handleTime = endTime - startTime;
                if (handleTime >= timeout) {
                   // 超时重试
-                  log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
+                     log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
                   log.info("client call timeout counts {}", timeoutRes.incrementAndGet());
                } else {
                   // 没有超时不用再重试
