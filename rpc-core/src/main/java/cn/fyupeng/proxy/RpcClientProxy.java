@@ -45,7 +45,7 @@ public class RpcClientProxy implements InvocationHandler {
     */
    private Class<?> pareClazz = null;
 
-   private AtomicInteger res = new AtomicInteger(0);
+   private AtomicInteger sucRes = new AtomicInteger(0);
    private AtomicInteger errRes = new AtomicInteger(0);
    private AtomicInteger timeoutRes = new AtomicInteger(0);
 
@@ -137,8 +137,6 @@ public class RpcClientProxy implements InvocationHandler {
             RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
          } else {
 
-            log.info("invoke method proxy timeout {} ms", timeout);
-
             for (int i = 0; i <= retries; i++) {
                long startTime = System.currentTimeMillis();
 
@@ -158,29 +156,21 @@ public class RpcClientProxy implements InvocationHandler {
                long handleTime = endTime - startTime;
                if (handleTime >= timeout) {
                   // 超时重试
-                  log.warn("invoke service timeout and retry to invoke");
-                  timeoutRes.incrementAndGet();
-                  log.info("client call success counts {}", res.get());
-                  log.info("client call timeout counts {}", timeoutRes.get());
-                  log.info("client call failed counts {}", errRes.get());
+                  log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
+                  log.info("client call timeout counts {}", timeoutRes.incrementAndGet());
                } else {
                   // 没有超时不用再重试
                   // 进一步校验包
                   if (RpcMessageChecker.check(rpcRequest, rpcResponse)) {
-                     res.incrementAndGet();
-                     log.info("client call success counts {}", res.get());
-                     log.info("client call timeout counts {}", timeoutRes.get());
-                     log.info("client call failed counts {}", errRes.get());
+                     log.info("client call success counts {}", sucRes.incrementAndGet());
                      return rpcResponse.getData();
                   }
                }
             }
+            log.info("client call failed counts {}", errRes.incrementAndGet());
+            throw new RetryTimeoutException("重试调用超时超过阈值，通道关闭，该线程中断，强制抛出异常！");
          }
-         log.info("client call success counts {}", res.get());
-         log.info("client call timeout counts {}", timeoutRes.get());
-         log.info("client call failed counts {}", errRes.get());
-         errRes.incrementAndGet();
-         throw new RetryTimeoutException("重试调用超时超过阈值，通道关闭，该线程中断，强制抛出异常！");
+
       }
 
       if (rpcClient instanceof SocketClient) {
