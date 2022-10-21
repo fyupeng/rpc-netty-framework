@@ -335,7 +335,13 @@ cn.fyupeng.nacos.cluster.use=true
 cn.fyupeng.nacos.cluster.load-balancer=round
 cn.fyupeng.nacos.cluster.nodes=192.168.2.185:8847|192.168.2.185:8848;192.168.2.185:8849
 ```
+当然`Netty`启动会独自开启端口，而且无需启动`Web`服务，整合`SpringBoot`仅仅用到用Jar包启动和使用`Spring`容器管理，把`Tomcat`默认占用端口关了，便于启动多服务服务实现横向扩展
 
+新建`application.properties`
+```properties
+spring.main.web-application-type=none
+spring.main.allow-bean-definition-overriding=true
+```
 ### 3.4 编写api
 
 注意与客户端包名完全相同
