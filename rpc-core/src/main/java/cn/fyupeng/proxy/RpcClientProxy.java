@@ -4,8 +4,10 @@ package cn.fyupeng.proxy;
 import cn.fyupeng.anotion.Reference;
 import cn.fyupeng.anotion.Service;
 import cn.fyupeng.exception.RetryTimeoutException;
+import cn.fyupeng.factory.SingleFactory;
 import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.net.netty.client.NettyClient;
+import cn.fyupeng.net.netty.client.UnprocessedRequests;
 import cn.fyupeng.net.socket.client.SocketClient;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
@@ -48,6 +50,11 @@ public class RpcClientProxy implements InvocationHandler {
    private AtomicInteger sucRes = new AtomicInteger(0);
    private AtomicInteger errRes = new AtomicInteger(0);
    private AtomicInteger timeoutRes = new AtomicInteger(0);
+
+   /**
+    * 未处理请求，主要处理失败请求，多线程共享
+    */
+   private static UnprocessedRequests unprocessedRequests = SingleFactory.getInstance(UnprocessedRequests.class);
 
    /**
     * @param rpcClient
@@ -156,8 +163,8 @@ public class RpcClientProxy implements InvocationHandler {
                long handleTime = endTime - startTime;
                if (handleTime >= timeout) {
                   // 超时重试
-                     log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
-                  log.info("client call timeout counts {}", timeoutRes.incrementAndGet());
+                  log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
+                  log.info("client  call timeout counts {}", timeoutRes.incrementAndGet());
                } else {
                   // 没有超时不用再重试
                   // 进一步校验包
@@ -168,6 +175,8 @@ public class RpcClientProxy implements InvocationHandler {
                }
             }
             log.info("client call failed counts {}", errRes.incrementAndGet());
+            // 客户端在这里无法探知是否成功收到服务器响应，只能确定该请求包 客户端已经抛弃了
+            unprocessedRequests.remove(rpcRequest.getRequestId());
             throw new RetryTimeoutException("重试调用超时超过阈值，通道关闭，该线程中断，强制抛出异常！");
          }
 

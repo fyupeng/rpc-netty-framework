@@ -39,6 +39,7 @@ public class UnprocessedRequests {
 
    /**
     * 移除 CompletableFuture<RpcResponse>
+    * 处理失败请求 id
     * @param requestId 请求体的 requestId 字段
     */
    public void remove(String requestId) {
