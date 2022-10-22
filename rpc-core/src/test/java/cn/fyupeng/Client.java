@@ -55,6 +55,6 @@ public class Client {
             threads[i].join();
         }
 
-        System.out.println(res);
+        System.out.println("总耗时为" + res);
     }
 }

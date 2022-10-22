@@ -13,10 +13,10 @@ import cn.fyupeng.net.netty.server.NettyServer;
  * @Version: 1.0
  */
 @ServiceScan
-public class RegisterAndLoginServer {
+public class Server {
     public static void main(String[] args) {
         try {
-            NettyServer nettyServer = new NettyServer("192.168.232.1", 8081, SerializerCode.KRYO.getCode());
+            NettyServer nettyServer = new NettyServer("192.168.43.33", 8081, SerializerCode.KRYO.getCode());
             nettyServer.start();
         } catch (RpcException e) {
             e.printStackTrace();
