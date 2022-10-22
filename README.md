@@ -493,6 +493,10 @@ After the exception is thrown, the thread will be interrupted and the tasks not 
 #### version 2.0
 - [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]: Optimized version 1.0 version, version 2.0 introduced timeout retry mechanism, using to idempotency to solve the business loss problem and improve business reliability.
 
+- [ [#2.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.1/pom )]: Version maintenance
+
+- [ [#2.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.2/pom )]: Repair the problems of downtime retry and load in the cluster configuration center
+
 ### 10. Development Notes
 
 If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation!
