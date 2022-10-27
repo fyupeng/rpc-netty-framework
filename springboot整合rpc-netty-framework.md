@@ -292,8 +292,10 @@ public class RpcServerStarter implements CommandLineRunner {
     public void init() {
         Map<String, String> resourceLoaders = ResourceLoadUtils.load("resource.properties");
         if (resourceLoaders != null) {
-            String serverPort = resourceLoaders.get("cn.fyupeng.config.serverPort");
-            resourceConfig.setServerPort(Integer.parseInt(serverPort));
+            String serverAddr = resourceLoaders.get("cn.fyupeng.config.server-addr");
+            String[] addrArray = serverAddr.split(":");
+            resourceConfig.setServerIp(addrArray[0]);
+            resourceConfig.setServerPort(Integer.parseInt(addrArray[1]));
         }
     }
 
@@ -307,7 +309,7 @@ public class RpcServerStarter implements CommandLineRunner {
         while(true){
             NettyServer nettyServer = null;
             try {
-                nettyServer = new NettyServer("192.168.2.185", resourceConfig.getServerPort(), SerializerCode.KRYO.getCode());
+                nettyServer = new NettyServer(resourceConfig.getServerIp(), resourceConfig.getServerPort(), SerializerCode.KRYO.getCode());
             } catch (RpcException e) {
                 e.printStackTrace();
             }
@@ -318,6 +320,7 @@ public class RpcServerStarter implements CommandLineRunner {
     }
 
 }
+
 ```
 
 ### 3.3 编写配置文件
@@ -325,8 +328,8 @@ public class RpcServerStarter implements CommandLineRunner {
 注意`config/resource.properties`与资源目录下的`resource.properties`不能同时公用，前者优先级高于后者
 
 ```properties
-# 用于启动 jar 包端口
-cn.fyupeng.config.serverPort=8082
+# 用于启动 jar 包地址
+cn.fyupeng.config.server-addr=192.168.10.1:8082
 
 # 用于配置中心单机
 cn.fyupeng.nacos.register-addr=192.168.2.185:8848
