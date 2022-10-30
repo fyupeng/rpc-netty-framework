@@ -20,6 +20,18 @@ A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md)
 - [x] provide a logging framework `Logback`.
 - [x] provides Netty extensible communication protocol, the communication protocol header uses the same 16-bit magic number `0xCAFEBABE` as Class, packet identification id to identify request and response packets, `res` length to prevent sticky packets, and finally `res`, which internally adds a check digit and a unique identification id to allow the server to efficiently handle multiple different request packets or resend request packets at the same time, and packet validation.
 
+Architecture Diagram
+
+- Retry mechanism architecture diagram
+
+![超时重试.png](image/超时重试.png)
+
+
+- Service Discovery and Registration Architecture Diagram
+
+![img.png](image/服务发现与注册.png)
+
+
 ### 1. service provisioning
 - Load Balancing Policy
 - Serialization policy
