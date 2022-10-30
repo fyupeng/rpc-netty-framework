@@ -8,9 +8,9 @@
 
 A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md) | [SpringBoot conformity RPC](springboot整合rpc-netty-framework.md)
 
-- [x] Solutions based on Socket and Netty asynchronous non-blocking communication.
+- [x] Solutions based on `Socket` and `Netty` asynchronous non-blocking communication.
 - [x] registry high availability, providing clustered registries that can continue to serve users through caching even after all registered nodes are down.
-- [x] Providing personalized services, introducing personalized service `name`, service `group`, suitable for services in test, experimental and formal environments, and better services for compatibility, maintenance and upgrade of later versions.
+- [x] Providing personalized services, introducing personalized service `name`, service `group`, suitable in test, experimental and formal environments, as well as providing better services for compatibility, maintenance and upgrading of later versions.
 - [ ] Provide cluster registry downtime restart service.
 - [x] Providing unlimited horizontal scaling of the service.
 - [x] provide two load balancing policies for the service, such as random and polled load.
