@@ -98,7 +98,13 @@ public class NettyClient implements RpcClient {
          */
         if (serviceDiscovery != null) {
             String serviceName = rpcRequest.getInterfaceName();
-            InetSocketAddress address = serviceDiscovery.lookupService(serviceName);
+            InetSocketAddress address = null;
+            String group = rpcRequest.getGroup();
+            if (group != null) {
+                address = serviceDiscovery.lookupService(serviceName, group);
+            } else {
+                address = serviceDiscovery.lookupService(serviceName);
+            }
             this.hostName = address.getHostName();
             this.port = address.getPort();
         }

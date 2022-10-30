@@ -221,6 +221,17 @@ public class NacosUtils {
     }
 
     /**
+     * 获取配置中心中与服务名匹配的所有实例，可以通过使用负载均衡选择其中一个实例
+     * @param serviceName 服务名
+     * @param groupName 组名
+     * @return 实例列表
+     * @throws NacosException
+     */
+    public static List<Instance> getAllInstance(String serviceName, String groupName) throws  NacosException {
+        return namingService.getAllInstances(serviceName, groupName);
+    }
+
+    /**
      * 将服务名与对应服务所在的地址注册到注册中心
      * @param serviceName 服务名
      * @param address 服务所在机器地址
@@ -228,6 +239,19 @@ public class NacosUtils {
      */
     public static void registerService(String serviceName, InetSocketAddress address) throws NacosException {
         namingService.registerInstance(serviceName, address.getHostName(), address.getPort());
+        log.info("host[{}] has been registered on Register Center", address.getHostName());
+        inetSocketAddress = address;
+        serviceNames.add(serviceName);
+    }
+
+    /**
+     * 将服务名与对应服务所在的地址注册到注册中心
+     * @param serviceName 服务名
+     * @param address 服务所在机器地址
+     * @throws NacosException
+     */
+    public static void registerService(String serviceName, String groupName, InetSocketAddress address) throws NacosException {
+        namingService.registerInstance(serviceName, groupName, address.getHostName(), address.getPort());
         log.info("host[{}] has been registered on Register Center", address.getHostName());
         inetSocketAddress = address;
         serviceNames.add(serviceName);
