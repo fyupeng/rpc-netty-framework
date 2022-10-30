@@ -7,6 +7,19 @@
 ![Version](https://img.shields.io/static/v1?label=LICENCE&message=MIT&color=brightgreen)
 
 A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md) | [SpringBoot conformity RPC](springboot整合rpc-netty-framework.md)
+
+- [x] Solutions based on Socket and Netty asynchronous non-blocking communication.
+- [x] registry high availability, providing clustered registries that can continue to serve users through caching even after all registered nodes are down.
+- [x] Providing personalized services, introducing personalized service `name`, service `group`, suitable for services in test, experimental and formal environments, and better services for compatibility, maintenance and upgrade of later versions.
+- [ ] Provide cluster registry downtime restart service.
+- [x] Providing unlimited horizontal scaling of the service.
+- [x] provide two load balancing policies for the service, such as random and polled load.
+- [x] provide request timeout retry and guarantee the idempotency of business execution, timeout retry can reduce the delay of thread pool tasks, thread pool guarantees the stability of the number of threads created under high concurrency scenarios, but thus brings delay problems, deal with the problem can be enabled retry requests, and retry reaches the threshold will abandon the request, consider the service temporarily unavailable, resulting in business loss, please use with caution.
+- [ ] provide custom annotated extensions to the service, using proxy extensions that can non-intrusively extend personalized services.
+- [x] provide scalable serialization services, currently providing `Kryo` and `Jackson` two serialization methods .
+- [x] provide a logging framework `Logback`.
+- [x] provides Netty extensible communication protocol, the communication protocol header uses the same 16-bit magic number `0xCAFEBABE` as Class, packet identification id to identify request and response packets, `res` length to prevent sticky packets, and finally `res`, which internally adds a check digit and a unique identification id to allow the server to efficiently handle multiple different request packets or resend request packets at the same time, and packet validation.
+
 ### 1. service provisioning
 - Load Balancing Policy
 - Serialization policy
