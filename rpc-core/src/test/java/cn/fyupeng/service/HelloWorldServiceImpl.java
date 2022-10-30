@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @Package: PACKAGE_NAME
  * @Version: 1.0
  */
-@Service
+@Service(name = "helloService", group = "1.0.0")
 public class HelloWorldServiceImpl implements HelloWorldService {
     private AtomicInteger count = new AtomicInteger(0);
     @Override

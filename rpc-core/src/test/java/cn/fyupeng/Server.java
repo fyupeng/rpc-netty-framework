@@ -16,7 +16,7 @@ import cn.fyupeng.net.netty.server.NettyServer;
 public class Server {
     public static void main(String[] args) {
         try {
-            NettyServer nettyServer = new NettyServer("192.168.43.33", 8081, SerializerCode.KRYO.getCode());
+            NettyServer nettyServer = new NettyServer("192.168.10.1", 8081, SerializerCode.KRYO.getCode());
             nettyServer.start();
         } catch (RpcException e) {
             e.printStackTrace();
