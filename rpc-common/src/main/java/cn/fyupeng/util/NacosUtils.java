@@ -228,7 +228,7 @@ public class NacosUtils {
      */
     public static void registerService(String serviceName, InetSocketAddress address) throws NacosException {
         namingService.registerInstance(serviceName, address.getHostName(), address.getPort());
-        log.info("host: {} has been registered on Register Center", address.getHostName());
+        log.info("host[{}] has been registered on Register Center", address.getHostName());
         inetSocketAddress = address;
         serviceNames.add(serviceName);
     }

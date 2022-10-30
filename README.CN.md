@@ -137,6 +137,12 @@ startup -m standalone
 
 官方文档：https://nacos.io/zh-cn/docs/quick-start.html
 
+优势：
+
+选用`Nacos`作为注册中心，是因为有较高的可用性，可实现服务长期可靠
+- 注册中心服务列表在本地保存一份
+- 宕机节点在自动重启恢复期间，服务依旧可用
+
 Nacos 启动效果：
 
 ![效果](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/nacos.png)

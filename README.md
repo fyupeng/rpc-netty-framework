@@ -137,6 +137,12 @@ startup -m standalone
 
 Official Documentation：https://nacos.io/zh-cn/docs/quick-start.html
 
+Advantage: 
+
+`Nacos` was chosen as the registry because of the high availability for long-term service reliability
+- A list of registry services is kept locally
+- Services remain available during automatic restart recovery of down nodes
+
 Nacos start effect：
 
 ![effect](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/nacos.png)
