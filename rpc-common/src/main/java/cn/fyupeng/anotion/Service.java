@@ -20,4 +20,10 @@ public @interface Service {
      * @return
      */
     public String name() default "";
+
+    /**
+     * 服务分组
+     * @return
+     */
+    public String group() default "";
 }

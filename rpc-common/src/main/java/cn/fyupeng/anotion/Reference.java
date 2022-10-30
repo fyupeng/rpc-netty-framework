@@ -26,6 +26,12 @@ public @interface Reference {
    public String name() default "";
 
    /**
+    * 服务分组
+    * @return
+    */
+   public String group() default "";
+
+   /**
     * 重试次数，服务端未能在超时时间内 响应，允许触发超时的次数
     * @return
     */

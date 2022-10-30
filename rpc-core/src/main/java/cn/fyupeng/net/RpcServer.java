@@ -12,4 +12,6 @@ import cn.fyupeng.exception.RpcException;
 public interface RpcServer {
     void start();
     <T> void publishService(T service, String serviceClass) throws RpcException;
+
+    <T> void publishService(T service, String groupName, String serviceClass) throws RpcException;
 }

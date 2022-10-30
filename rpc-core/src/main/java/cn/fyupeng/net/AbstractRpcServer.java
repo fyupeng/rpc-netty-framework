@@ -31,6 +31,10 @@ public abstract class AbstractRpcServer implements RpcServer {
    protected ServiceProvider serviceProvider;
    protected ServiceRegistry serviceRegistry;
 
+   /**
+    * 启动服务后，扫描所有service类，并自动发布到注册中心
+    * @throws RpcException
+    */
    public void scanServices() throws RpcException {
       // 获取调用者 start 服务时所在的主类名, 即 调用者 调用 AbstractRpcServer 的子类 类名
       String mainClassName = ReflectUtil.getStackTrace();
@@ -64,6 +68,7 @@ public abstract class AbstractRpcServer implements RpcServer {
       for (Class<?> clazz : classSet) {
          if (clazz.isAnnotationPresent(Service.class)) {
             String serviceName = clazz.getAnnotation(Service.class).name();
+            String group = clazz.getAnnotation(Service.class).group();
             Object obj;
             try {
                obj = clazz.newInstance();
@@ -74,19 +79,50 @@ public abstract class AbstractRpcServer implements RpcServer {
             }
             if ("".equals(serviceName)) {
                Class<?>[] interfaces = clazz.getInterfaces();
-               for (Class<?> oneInterface : interfaces) {
-                  publishService(obj, oneInterface.getCanonicalName());
+               if ("".equals(group)) {
+                  for (Class<?> oneInterface : interfaces) {
+                     publishService(obj, group, oneInterface.getCanonicalName());
+                  }
+               } else {
+                  for (Class<?> oneInterface : interfaces) {
+                     publishService(obj, oneInterface.getCanonicalName());
+                  }
                }
             } else {
-               publishService(obj, serviceName);
+               if ("".equals(group)) {
+                  publishService(obj, serviceName);
+               } else {
+                  publishService(obj, group, serviceName);
+               }
             }
          }
       }
    }
 
+   /**
+    * 默认组名为“DEFAULT_GROUP”, 向注册中心发布服务
+    * @param service 服务
+    * @param serviceName 服务名
+    * @param <T>
+    * @throws RpcException
+    */
    @Override
    public <T> void publishService(T service, String serviceName) throws RpcException {
       serviceProvider.addServiceProvider(service, serviceName);
       serviceRegistry.register(serviceName, new InetSocketAddress(hostName, port));
+   }
+
+   /**
+    * 组名下向注册中心发布服务
+    * @param service 服务
+    * @param groupName 组名
+    * @param serviceName 服务名
+    * @param <T>
+    * @throws RpcException
+    */
+   @Override
+   public <T> void publishService(T service, String groupName, String serviceName) throws RpcException {
+      serviceProvider.addServiceProvider(service,  serviceName);
+      serviceRegistry.register(serviceName, groupName, new InetSocketAddress(hostName, port));
    }
 }

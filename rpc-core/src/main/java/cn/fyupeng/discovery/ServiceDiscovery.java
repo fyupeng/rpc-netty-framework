@@ -13,4 +13,6 @@ import java.net.InetSocketAddress;
  */
 public interface ServiceDiscovery {
     InetSocketAddress lookupService(String serviceName) throws RpcException;
+
+    InetSocketAddress lookupService(String serviceName, String groupName) throws RpcException;
 }

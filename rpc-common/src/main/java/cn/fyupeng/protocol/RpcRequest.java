@@ -25,6 +25,8 @@ public class RpcRequest implements Serializable {
     // 调用方法的 参数类型
     private Class<?>[] paramTypes;
 
+    private String group;
+
     /**
      * 指定 是否为 心跳包，区分数据包和心跳包的关键，需要配合 IdleStateHandler 使用
      * IdleStateHandler 作用 做 读空闲检测、写检测、读写检测
@@ -104,6 +106,10 @@ public class RpcRequest implements Serializable {
         return interfaceName;
     }
 
+    public void setInterfaceName(String interfaceName) {
+        this.interfaceName = interfaceName;
+    }
+
     public String getMethodName() {
         return methodName;
     }
@@ -114,6 +120,14 @@ public class RpcRequest implements Serializable {
 
     public Class<?>[] getParamTypes() {
         return paramTypes;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
     }
 
     public Boolean getHeartBeat() {
@@ -132,6 +146,8 @@ public class RpcRequest implements Serializable {
                 ", methodName='" + methodName + '\'' +
                 ", parameters=" + Arrays.toString(parameters) +
                 ", paramTypes=" + Arrays.toString(paramTypes) +
+                ", group='" + group + '\'' +
+                ", heartBeat=" + heartBeat +
                 '}';
     }
 }

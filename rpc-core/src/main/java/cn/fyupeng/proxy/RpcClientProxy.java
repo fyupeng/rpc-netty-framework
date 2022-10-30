@@ -66,7 +66,8 @@ public class RpcClientProxy implements InvocationHandler {
 
    /**
     * 用于可 超时重试 的动态代理，需要配合 @Reference使用
-    * @param pareClazz
+    * @param clazz 获取的服务类
+    * @param pareClazz 使用 @Reference 所在类
     * @param <T>
     * @return
     */
@@ -76,7 +77,10 @@ public class RpcClientProxy implements InvocationHandler {
    }
 
    /**
-    用于普通动态代理，@Reference 将失效，已过时，不推荐使用
+    * 用于普通动态代理，@Reference 将失效，已过时，不推荐使用
+    * @param clazz 获取的服务类
+    * @param <T>
+    * @return
     */
    @Deprecated
    public <T> T getProxy(Class<T> clazz){
@@ -95,7 +99,7 @@ public class RpcClientProxy implements InvocationHandler {
               .parameters(args)
               .paramTypes(method.getParameterTypes())
               /**这里心跳指定为false，一般由另外其他专门的心跳 handler 来发送
-               * 如果发送 并且 hearBeat 为 true，说明超时
+               * 如果发送 并且 hearBeat 为 true，说明触发发送心跳包
                */
               .heartBeat(false)
               .build();
@@ -114,12 +118,28 @@ public class RpcClientProxy implements InvocationHandler {
          return rpcResponse.getData();
       }
 
+      Field[] fields = pareClazz.getDeclaredFields();
+      for (Field field : fields) {
+         if (field.isAnnotationPresent(Reference.class) &&
+                 method.getDeclaringClass().getName().equals(field.getType().getName())) {
+            String name = field.getAnnotation(Reference.class).name();
+            String group = field.getAnnotation(Reference.class).group();
+            if (!"".equals(name)) {
+               rpcRequest.setInterfaceName(name);
+            }
+            if (!"".equals(group)) {
+               rpcRequest.setGroup(group);
+            }
+            break;
+         }
+      }
+
       if (rpcClient instanceof NettyClient) {
          /**
           * 重试机制实现
           */
 
-         Field[] fields = pareClazz.getDeclaredFields();
+
          long timeout = 0L;
          long asyncTime = 0L;
          int retries = 0;
