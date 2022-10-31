@@ -24,12 +24,12 @@ Architecture Diagram
 
 - Retry mechanism architecture diagram
 
-![超时重试.png](image/超时重试.png)
+![超时重试.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/超时重试.png)
 
 
 - Service Discovery and Registration Architecture Diagram
 
-![服务发现与注册.png](image/服务发现与注册.png)
+![服务发现与注册.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/服务发现与注册.png)
 
 
 ### 1. service provisioning

@@ -24,12 +24,12 @@
 
 - 重试机制架构图
 
-![超时重试.png](image/超时重试.png)
+![超时重试.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/超时重试.png)
 
 
 - 服务发现与注册架构图
 
-![img.png](image/服务发现与注册.png)
+![服务发现与注册.png.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/服务发现与注册.png)
 
 ### 1. 服务提供
 - 负载均衡策略
