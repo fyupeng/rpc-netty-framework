@@ -29,7 +29,7 @@ Architecture Diagram
 
 - Service Discovery and Registration Architecture Diagram
 
-![img.png](image/服务发现与注册.png)
+![服务发现与注册.png](image/服务发现与注册.png)
 
 
 ### 1. service provisioning
