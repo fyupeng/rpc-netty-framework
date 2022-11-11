@@ -5,11 +5,10 @@ import cn.fyupeng.codec.CommonEncoder;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.hook.ShutdownHook;
 import cn.fyupeng.net.AbstractRpcServer;
-import cn.fyupeng.provider.DefaultServiceProvider;
-import cn.fyupeng.registry.NacosServiceRegistry;
+import cn.fyupeng.provider.ServiceProvider;
+import cn.fyupeng.registry.ServiceRegistry;
 import cn.fyupeng.serializer.CommonSerializer;
 import cn.fyupeng.util.IpUtils;
-import cn.fyupeng.util.JsonUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -20,6 +19,7 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 
 
@@ -51,8 +51,14 @@ public class NettyServer extends AbstractRpcServer {
         this.hostName = hostName.equals("localhost") || hostName.equals("127.0.0.1") ? IpUtils.getPubIpAddr() : hostName;
         log.info("start with host: {}, port: {}", this.hostName, port);
         this.port = port;
-        serviceRegistry = new NacosServiceRegistry();
-        serviceProvider = new DefaultServiceProvider();
+        //serviceRegistry = new NacosServiceRegistry();
+        //serviceProvider = new DefaultServiceProvider();
+        /**
+         * 使用 SPI 机制，接口与实现类解耦到配置文件
+         */
+        serviceRegistry = ServiceLoader.load(ServiceRegistry.class).iterator().next();
+        serviceProvider = ServiceLoader.load(ServiceProvider.class).iterator().next();
+
         serializer = CommonSerializer.getByCode(serializerCode);
         // 扫描 @ServiceScan 包下的 所有 @Service类，并 注册它们
         scanServices();

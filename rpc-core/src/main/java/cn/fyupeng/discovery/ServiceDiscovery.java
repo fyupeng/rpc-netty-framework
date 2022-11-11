@@ -1,6 +1,7 @@
 package cn.fyupeng.discovery;
 
 import cn.fyupeng.exception.RpcException;
+import cn.fyupeng.loadbalancer.LoadBalancer;
 
 import java.net.InetSocketAddress;
 
@@ -11,8 +12,18 @@ import java.net.InetSocketAddress;
  * @Package: cn.fyupeng.discovery
  * @Version: 1.0
  */
-public interface ServiceDiscovery {
-    InetSocketAddress lookupService(String serviceName) throws RpcException;
+public abstract class ServiceDiscovery {
 
-    InetSocketAddress lookupService(String serviceName, String groupName) throws RpcException;
+    protected LoadBalancer loadBalancer;
+
+    public ServiceDiscovery() {
+    }
+
+    public void setLoadBalancer(LoadBalancer loadBalancer) {
+        this.loadBalancer = loadBalancer;
+    }
+
+    public abstract InetSocketAddress lookupService(String serviceName) throws RpcException;
+
+    public abstract InetSocketAddress lookupService(String serviceName, String groupName) throws RpcException;
 }

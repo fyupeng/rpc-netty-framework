@@ -1,6 +1,5 @@
 package cn.fyupeng.net.netty.client;
 
-import cn.fyupeng.discovery.NacosServiceDiscovery;
 import cn.fyupeng.discovery.ServiceDiscovery;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.factory.SingleFactory;
@@ -16,6 +15,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
+import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -60,7 +60,12 @@ public class NettyClient implements RpcClient {
      * @param serializerCode
      */
     public NettyClient(LoadBalancer loadBalancer, Integer serializerCode) {
-        serviceDiscovery = new NacosServiceDiscovery(loadBalancer);
+        //serviceDiscovery = new NacosServiceDiscovery(loadBalancer);
+        /**
+         * SPI 机制，接口与实现类解耦到 配置文件
+         */
+        serviceDiscovery = ServiceLoader.load(ServiceDiscovery.class).iterator().next();
+        serviceDiscovery.setLoadBalancer(loadBalancer);
         serializer = CommonSerializer.getByCode(serializerCode);
         /**
          * fix bug
