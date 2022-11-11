@@ -9,6 +9,7 @@
 一个分布式微服务RPC框架 | [英文说明文档](README.md) | [SpringBoot整合RPC](springboot整合rpc-netty-framework.md)
 
 - [x] 基于`Socket`和`Netty`异步非阻塞通信的解决方案；
+- [x] 支持`JDK`内置`SPI`机制，实现接口与实现解耦；
 - [x] 注册中心高可用性，提供集群注册中心，所有注册节点宕机后仍能通过缓存为用户持续提供服务；
 - [x] 提供个性化服务，推出个性化服务`name`、服务`group`，适合在测试、实验和正式环境的服务，以及为后期版本的兼容、维护和升级提供更好的服务；
 - [ ] 提供集群注册中心宕机重启服务；
@@ -79,7 +80,31 @@
 利用了 `Netty` 框架中的 `IdleStateEvent` 事件监听器，重写`userEventTriggered()` 方法，在服务端监听读操作，读取客户端的 写操作，在客户端监听写操作，监听本身是否还在活动，即有没有向服务端发送请求。
 
 如果客户端没有主动断开与服务端的连接，而继续保持连接着，那么客户端的写操作超时后，也就是客户端的监听器监听到客户端没有的规定时间内做出写操作事件，那么这时客户端该处理器主动发送心跳包给服务端，保证客户端让服务端确保自己保持着活性。
-### 3. IO 异步非阻塞
+
+### 3. SPI 机制
+
+资源目录`META-INF/services`下新建接口全限定名作为文件名，内容为实现类全限定名，支持`JDK`内置`SPI`。
+
+本质通过反射来无参构造创建实例，如果构造函数涉及到通过参数来实现注入成员，那么可将接口转为抽象类，抽象类暴露set方法来让子类重写，从而间接实现注入。
+
+该机制将注册中心逻辑层处理服务发现和注册的接口时实现分离到配置文件`META-INF/services`，从而更好地去支持其他插件，如`Zookeeper`、`Eureka`的扩展。
+
+应用到的配置文件：
+- `cn.fyupeng.discovery.ServiceDiscovery`
+
+```properties
+cn.fyupeng.discovery.NacosServiceDiscovery
+```
+- `cn.fyupeng.provider.ServiceProvider`
+
+```properties
+cn.fyupeng.provider.DefaultServiceProvider
+```
+- `cn.fyupeng.registry.ServiceRegistry`
+```properties
+cn.fyupeng.registry.NacosServiceRegistry
+```
+### 4. IO 异步非阻塞
 
 IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而且能够在请求数据返回时间段里去处理自己感兴趣的事情。
 
@@ -93,7 +118,7 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 
 
 
-### 4. RNF 协议
+### 5. RNF 协议
 
 ```java
 /**
@@ -134,7 +159,7 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>1.0.10</version>
+    <version>2.0.4</version>
 </dependency>
 ```
 阿里仓库10月份开始处于系统升级，有些版本还没同步过去，推荐另一个`maven`官方仓库：

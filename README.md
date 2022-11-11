@@ -9,6 +9,7 @@
 A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md) | [SpringBoot conformity RPC](springboot整合rpc-netty-framework.md)
 
 - [x] Solutions based on `Socket` and `Netty` asynchronous non-blocking communication.
+- [x] Support for the `JDK` built-in `SPI` mechanism for decoupling interfaces from implementations.
 - [x] registry high availability, providing clustered registries that can continue to serve users through caching even after all registered nodes are down.
 - [x] Providing personalized services, introducing personalized service `name`, service `group`, suitable in test, experimental and formal environments, as well as providing better services for compatibility, maintenance and upgrading of later versions.
 - [ ] Provide cluster registry downtime restart service.
@@ -83,7 +84,27 @@ Utilize the `IdleStateEvent` event listener in the `Netty` framework, rewrite th
 
 If the client does not actively disconnect the connection with the server, but continues to maintain the connection, then after the client's write operation times out, that is, the client's listener listens to the client to make a write operation event within the specified time, then at this time The client processor actively sends a heartbeat packet to the server to ensure that the client allows the server to ensure that it remains active.
 
-### 3. IO asynchronous non-blocking
+### 3. `SPI` mechanism
+Resource directory `META-INF/services` under the new interface fully qualified name as a file name, the contents of the implementation class fully qualified name, support `JDK` built-in `SPI`.
+
+The essence to create instances through reflection to create instances without parameters, if the constructor involves the injection of members through parameters, then the interface can be converted to an abstract class, the abstract class exposes the set method to allow subclasses to override, thus indirectly achieve injection.
+
+This mechanism separates the implementation of the interface when the registry logic layer handles service discovery and registration to the configuration file `META-INF/services`, thus better supporting other plugins such as `Zookeeper`, `Eureka` extensions.
+
+Configuration files applied to.
+- `cn.fyupeng.discovery.ServiceDiscovery`
+```properties
+  cn.fyupeng.discovery.NacosServiceDiscovery
+```
+- `cn.fyupeng.provider.ServiceProvider`
+```properties
+cn.fyupeng.provider.DefaultServiceProvider
+```
+- `cn.fyupeng.registry.ServiceRegistry`
+```properties
+cn.fyupeng.registry.NacosServiceRegistry
+```
+### 4. IO asynchronous non-blocking
 
 IO asynchronous non-blocking allows the client to be in a blocking state when requesting data, and can process things of interest during the time period when the requested data is returned.
 
@@ -95,7 +116,7 @@ Using the `CompletableFuture` concurrency tool class born in java8, it can proce
 
 The data is transmitted in the channel `channel` between the server and the client. The client sends a request packet to the channel and needs to wait for the server to return. In this case, you can use `CompletableFuture` as the return result, just let the client read the After the data, the result is put in the value through the `complete()` method, and the result is obtained through the `get()` method in the future.
 
-### 4. RNF Protocol
+### 5. RNF Protocol
 ```java
 /**
      * custom object header protocol 16 bytes
@@ -135,7 +156,7 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
 <dependency>
   <groupId>cn.fyupeng</groupId
   <artifactId>rpc-core</artifactId>
-  <version>1.0.10</version>
+  <version>2.0.4</version>
 </dependency>
 ```
 Ali repository in October began in the system upgrade, some versions have not been synchronized, recommend another `maven` official repository
