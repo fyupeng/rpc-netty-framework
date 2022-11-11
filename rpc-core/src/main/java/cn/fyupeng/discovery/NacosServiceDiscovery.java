@@ -19,11 +19,19 @@ import java.util.List;
  * @Version: 1.0
  */
 @Slf4j
-public class NacosServiceDiscovery implements ServiceDiscovery {
+public class NacosServiceDiscovery extends ServiceDiscovery {
 
-    private final LoadBalancer loadBalancer;
+    /**
+     * 兼容 SPI 机制
+     */
+    public NacosServiceDiscovery() {
+    }
 
     public NacosServiceDiscovery(LoadBalancer loadBalancer) {
+        this.loadBalancer = loadBalancer;
+    }
+
+    public void setLoadBalancer(LoadBalancer loadBalancer) {
         this.loadBalancer = loadBalancer;
     }
 
