@@ -13,6 +13,7 @@ import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.util.RpcMessageChecker;
 import lombok.extern.slf4j.Slf4j;
+import org.n3r.idworker.Sid;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
@@ -93,7 +94,14 @@ public class RpcClientProxy implements InvocationHandler {
 
 
       RpcRequest rpcRequest = new RpcRequest.Builder()
-              .requestId(UUID.randomUUID().toString())
+              /**
+               * 使用雪花算法 解决分布式 RPC 各节点生成请求号 id 一致性问题
+               */
+              .requestId(Sid.next())
+              /**
+               * 没有处理时间戳一致问题，可通过 synchronized 锁阻塞来获取
+               */
+              //.requestId(UUID.randomUUID().toString())
               .interfaceName(method.getDeclaringClass().getName())
               .methodName(method.getName())
               .parameters(args)
