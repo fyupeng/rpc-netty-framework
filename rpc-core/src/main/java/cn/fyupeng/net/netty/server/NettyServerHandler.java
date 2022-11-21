@@ -1,8 +1,15 @@
 package cn.fyupeng.net.netty.server;
 
 import cn.fyupeng.handler.RequestHandler;
+import cn.fyupeng.idworker.utils.JRedisHelper;
+import cn.fyupeng.idworker.utils.LRedisHelper;
 import cn.fyupeng.protocol.RpcRequest;
+
 import cn.fyupeng.protocol.RpcResponse;
+import cn.fyupeng.serializer.CommonSerializer;
+import cn.fyupeng.util.JsonUtils;
+import cn.fyupeng.util.PropertiesConstants;
+import com.alibaba.nacos.common.utils.StringUtils;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -12,8 +19,10 @@ import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 
-import java.util.HashMap;
-import java.util.HashSet;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * @Auther: fyp
@@ -33,11 +42,95 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
 
     /**
      * 保存上一次的请求执行 结果
-     */
+
     // 多线程可超时幂等性处理
     private static HashMap<String, Object> resMap = new HashMap<>();
+    */
+    private static String redisServerWay = "";
+    private static String redisClientAsync = "";
 
     static {
+        // 使用InPutStream流读取properties文件
+        String currentWorkPath = System.getProperty("user.dir");
+        PropertyResourceBundle configResource = null;
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(currentWorkPath + "/config/resource.properties"));) {
+
+            configResource = new PropertyResourceBundle(bufferedReader);
+            redisServerWay = configResource.getString(PropertiesConstants.REDIS_SERVER_WAY);
+
+            if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
+                log.info("find redis client way attribute is jedis");
+            } else if ("lettuce".equals(redisServerWay)) {
+                log.info("find redis client way attribute is lettuce");
+                /**
+                 * 由于 LRedisHelper 首次启动需要创建线程池，主动触发懒加载进行预加载
+                 */
+                //LRedisHelper.preLoad();
+                try {
+                    redisClientAsync = configResource.getString(PropertiesConstants.REDIS_CLIENT_ASYNC);
+
+                    if ("false".equals(redisClientAsync) || "default".equals(redisClientAsync) || StringUtils.isBlank(redisClientAsync)) {
+                        log.info("find redis client async attribute is false");
+                    } else if ("true".equals(redisClientAsync)) {
+                        log.info("find redis client async attribute is lettuce");
+                    } else {
+                        throw new RuntimeException("redis client async attribute is illegal!");
+                    }
+
+                } catch (MissingResourceException redisClientAsyncException) {
+                    log.warn("redis client way attribute is missing");
+                    log.info("use default redis client default way: jedis");
+                    redisClientAsync = "false";
+                }
+            } else {
+                throw new RuntimeException("redis client way attribute is illegal!");
+            }
+
+        } catch (MissingResourceException redisServerWayException) {
+            log.warn("redis client way attribute is missing");
+            log.info("use default redis client default way: jedis");
+            redisServerWay = "jedis";
+        } catch (IOException ioException) {
+            log.info("not found resource from resource path: {}", currentWorkPath + "/config/resource.properties");
+            try {
+                    ResourceBundle resource = ResourceBundle.getBundle("resource");
+                    redisServerWay = resource.getString(PropertiesConstants.REDIS_SERVER_WAY);
+                if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
+                    log.info("find redis client way attribute is jedis");
+                } else if ("lettuce".equals(redisServerWay)) {
+                    log.info("find redis client way attribute is lettuce");
+                    /**
+                     * 由于 LRedisHelper 首次启动需要创建线程池，主动触发懒加载进行预加载
+                     */
+                    //LRedisHelper.preLoad();
+                    try {
+                        redisClientAsync = resource.getString(PropertiesConstants.REDIS_CLIENT_ASYNC);
+
+                        if ("false".equals(redisClientAsync) || "default".equals(redisClientAsync) || StringUtils.isBlank(redisClientAsync)) {
+                            log.info("find redis client async attribute is false");
+                        } else if ("true".equals(redisClientAsync)) {
+                            log.info("find redis client async attribute is lettuce");
+                        } else {
+                            throw new RuntimeException("redis client async attribute is illegal!");
+                        }
+
+                    } catch (MissingResourceException redisClientAsyncException) {
+                        log.warn("redis client way attribute is missing");
+                        log.info("use default redis client default way: jedis");
+                        redisClientAsync = "false";
+                    }
+                } else {
+                    throw new RuntimeException("redis client way attribute is illegal!");
+                }
+
+            } catch (MissingResourceException resourceException) {
+                log.info("not found resource from resource path: {}", "resource.properties");
+                log.info("use default redis client way: jedis");
+                redisServerWay = "jedis";
+            }
+            log.info("read resource from resource path: {}", "resource.properties");
+
+        }
         requestHandler = new RequestHandler();
     }
 
@@ -61,12 +154,51 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
             log.info("server has received request: {}", msg);
 
             // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
+
+            /**
+             * 改良
+             * 使用 Redis 实现分布式缓存
+             *
+             */
+            Object result = null;
+
+            if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
+                if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
+                    log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
+                    result = requestHandler.handler(msg);
+                    JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
+                } else {
+                    result = JRedisHelper.getForRetryRequestId(msg.getRequestId());
+                    result = JsonUtils.jsonToPojo((String) result,  msg.getReturnType());
+                    log.info("Previous results:{} ", result);
+                    log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
+                }
+            } else {
+
+                if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
+                    log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
+                    result = requestHandler.handler(msg);
+                    CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.KRYO_SERIALIZER);
+                    if ("true".equals(redisClientAsync)) {
+                        LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                    } else {
+                        LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                    }
+                } else {
+                    CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.KRYO_SERIALIZER);
+                    result = LRedisHelper.getForRetryRequestId(msg.getRequestId());
+                    result = serializer.deserialize((byte[]) result, msg.getReturnType());
+                    log.info("Previous results:{} ", result);
+                    log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
+                }
+            }
+
             /**
              * 这里要防止重试
              * 分为两种情况
              * 1. 如果是 客户端发送给服务端 途中出现问题，请求包之前 服务器未获取到，也就是 唯一请求id号 没有重复
              * 2. 如果是 服务端发回客户端途中出现问题，导致客户端触发 超时重试，这时服务端会 接收 重试请求包，也就是有 重复请求id号
-             */
+
             // 请求id 为第一次请求 id
             Object result = null;
             if (timeoutRetryRequestIdSet.add(msg.getRequestId())) {
@@ -76,6 +208,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
             } else {
                 result = resMap.get(msg.getRequestId());
             }
+             */
             // 生成 校验码，客户端收到后 会 对 数据包 进行校验
             if (ctx.channel().isActive() && ctx.channel().isWritable()) {
                 /**
@@ -94,11 +227,12 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(),checkCode);
                 ChannelFuture future = ctx.writeAndFlush(rpcResponse);
 
+
                 /**
                  * 大于 1000 条请求id 时，及时清除不用的请求 id
                  * 保存此时 服务接收的请求 id
                  * 考虑多线程中 对其他 线程刚添加的请求id 进行清除的影响
-                 */
+
                 if (timeoutRetryRequestIdSet.size() >= 1000) {
                     synchronized (this) {
                         if (timeoutRetryRequestIdSet.size() >= 1000) {
@@ -106,9 +240,12 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                             resMap.clear();
                             timeoutRetryRequestIdSet.add(msg.getRequestId());
                             resMap.put(msg.getRequestId(), result);
+                        } else {
+                            timeoutRetryRequestIdSet.add(msg.getRequestId());
+                            resMap.put(msg.getRequestId(), result);
                         }
                     }
-                }
+                } */
 
 
             } else {
@@ -126,7 +263,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        log.error("error occurred while invoking!,info: ", cause);
+        log.error("error occurred while invoking! info: ", cause);
         ctx.close();
     }
 
