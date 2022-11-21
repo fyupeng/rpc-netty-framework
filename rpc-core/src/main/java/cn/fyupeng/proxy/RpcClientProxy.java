@@ -5,21 +5,21 @@ import cn.fyupeng.anotion.Reference;
 import cn.fyupeng.anotion.Service;
 import cn.fyupeng.exception.RetryTimeoutException;
 import cn.fyupeng.factory.SingleFactory;
+import cn.fyupeng.idworker.Sid;
 import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.net.netty.client.NettyClient;
 import cn.fyupeng.net.netty.client.UnprocessedRequests;
 import cn.fyupeng.net.socket.client.SocketClient;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
+import cn.fyupeng.util.NacosUtils;
 import cn.fyupeng.util.RpcMessageChecker;
 import lombok.extern.slf4j.Slf4j;
-import org.n3r.idworker.Sid;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -90,8 +90,11 @@ public class RpcClientProxy implements InvocationHandler {
 
    @Override
    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-      log.info("invoke method:{}#{}", method.getDeclaringClass().getName(), method.getName());
 
+      /**
+       * 预加载
+       */
+      NacosUtils.preLoad();
 
       RpcRequest rpcRequest = new RpcRequest.Builder()
               /**
@@ -106,6 +109,7 @@ public class RpcClientProxy implements InvocationHandler {
               .methodName(method.getName())
               .parameters(args)
               .paramTypes(method.getParameterTypes())
+              .returnType(method.getReturnType())
               /**这里心跳指定为false，一般由另外其他专门的心跳 handler 来发送
                * 如果发送 并且 hearBeat 为 true，说明触发发送心跳包
                */
@@ -115,6 +119,7 @@ public class RpcClientProxy implements InvocationHandler {
       RpcResponse rpcResponse = null;
 
       if (pareClazz == null) {
+         log.info("invoke method:{}#{}", method.getDeclaringClass().getName(), method.getName());
          if (rpcClient instanceof NettyClient) {
             CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
             rpcResponse = completableFuture.get();
@@ -142,12 +147,12 @@ public class RpcClientProxy implements InvocationHandler {
          }
       }
 
+      log.info("invoke method:{}#{}", method.getDeclaringClass().getName(), method.getName());
+
       if (rpcClient instanceof NettyClient) {
          /**
           * 重试机制实现
           */
-
-
          long timeout = 0L;
          long asyncTime = 0L;
          int retries = 0;
@@ -171,7 +176,7 @@ public class RpcClientProxy implements InvocationHandler {
             rpcResponse = completableFuture.get();
             RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
          } else {
-
+            long handleTime = 0;
             for (int i = 0; i <= retries; i++) {
                long startTime = System.currentTimeMillis();
 
@@ -184,11 +189,12 @@ public class RpcClientProxy implements InvocationHandler {
                   if (timeout >= asyncTime) {
                      log.warn("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
                   }
+                  log.warn("recommend that asyncTime [ {} ] should be greater than runeTime [ {} ]", asyncTime, System.currentTimeMillis() - startTime);
                   continue;
                }
 
                long endTime = System.currentTimeMillis();
-               long handleTime = endTime - startTime;
+               handleTime = endTime - startTime;
                if (handleTime >= timeout) {
                   // 超时重试
                   log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
@@ -197,12 +203,12 @@ public class RpcClientProxy implements InvocationHandler {
                   // 没有超时不用再重试
                   // 进一步校验包
                   if (RpcMessageChecker.check(rpcRequest, rpcResponse)) {
-                     log.info("client call success counts {}", sucRes.incrementAndGet());
+                     log.info("client call success counts {} [ rms: {}, tms: {} ]", sucRes.incrementAndGet(), handleTime, timeout);
                      return rpcResponse.getData();
                   }
                }
             }
-            log.info("client call failed counts {}", errRes.incrementAndGet());
+            log.info("client call failed counts {} [ rms: {}, tms: {} ]", errRes.incrementAndGet(), handleTime, timeout);
             // 客户端在这里无法探知是否成功收到服务器响应，只能确定该请求包 客户端已经抛弃了
             unprocessedRequests.remove(rpcRequest.getRequestId());
             throw new RetryTimeoutException("重试调用超时超过阈值，通道关闭，该线程中断，强制抛出异常！");

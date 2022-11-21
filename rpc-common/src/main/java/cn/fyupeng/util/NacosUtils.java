@@ -196,6 +196,10 @@ public class NacosUtils {
             log.error("Service occupy Internal Errors");
     }
 
+    public static void preLoad() {
+        log.trace("trigger preload");
+    }
+
 
     /**
      * 获取绑定的 Nacos 服务
@@ -239,7 +243,7 @@ public class NacosUtils {
      */
     public static void registerService(String serviceName, InetSocketAddress address) throws NacosException {
         namingService.registerInstance(serviceName, address.getHostName(), address.getPort());
-        log.info("host[{}] has been registered on Register Center", address.getHostName());
+        log.info("host[{}], service[{}] has been registered on Register Center", address.getHostName(), serviceName);
         inetSocketAddress = address;
         serviceNames.add(serviceName);
     }
@@ -252,7 +256,7 @@ public class NacosUtils {
      */
     public static void registerService(String serviceName, String groupName, InetSocketAddress address) throws NacosException {
         namingService.registerInstance(serviceName, groupName, address.getHostName(), address.getPort());
-        log.info("host[{}] has been registered on Register Center", address.getHostName());
+        log.info("host[{}], service[{}] has been registered on Register Center", address.getHostName(), serviceName);
         inetSocketAddress = address;
         serviceNames.add(serviceName);
     }

@@ -1,8 +1,7 @@
-package org.n3r.idworker;
+package cn.fyupeng.idworker;
 
-import org.n3r.idworker.enums.ServerSelector;
-import org.n3r.idworker.utils.TimeUtils;
-import org.n3r.idworker.utils.WorkerIdServer;
+import cn.fyupeng.idworker.enums.ServerSelector;
+import cn.fyupeng.idworker.utils.TimeUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
