@@ -33,11 +33,14 @@ public class RequestHandler {
      * @return
      */
    public Object handler(RpcRequest rpcRequest) {
+       long begin = System.currentTimeMillis();
        Object result = null;
        try {
            Object service = serviceProvider.getServiceProvider(rpcRequest.getInterfaceName());
            result = invokeTargetMethod(rpcRequest, service);
             log.info("Service: {} has invoked method: {} ", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
+           long end = System.currentTimeMillis();
+           log.info("-- 执行耗时：{}ms", (end - begin)/100);
        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException | RpcException e) {
            log.error("Error occurred while invoking or sending! info: ", e);
            return e;
