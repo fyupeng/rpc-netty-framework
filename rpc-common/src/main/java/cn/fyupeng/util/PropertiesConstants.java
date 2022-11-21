@@ -16,5 +16,8 @@ public class PropertiesConstants {
     public final static String REDIS_SERVER_ADDR = "cn.fyupeng.redis.server-addr";
     public final static String REDIS_SERVER_AUTH = "cn.fyupeng.redis.server-auth";
     public final static String REDIS_SERVER_PWD = "cn.fyupeng.redis.server-pwd";
+    public final static String REDIS_SERVER_WAY = "cn.fyupeng.redis.server-way";
+    public final static String REDIS_CLIENT_WAY = "cn.fyupeng.redis.client-way";
+    public final static String REDIS_CLIENT_ASYNC = "cn.fyupeng.redis.client-async";
 
 }
