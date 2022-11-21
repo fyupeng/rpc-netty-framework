@@ -41,13 +41,13 @@ public @interface Reference {
     * 超时时间，即 客户端最长允许等待 服务端时长，超时即触发重试机制
     * @return
     */
-   public long timeout() default 2000;
+   public long timeout() default 3000;
 
    /**
     * 异步时间，即等待服务端异步响应的时间
     * 只在超时重试机制使用，非超时重试情况下默认使用 阻塞等待方式
     * @return
     */
-   public long asyncTime() default 3000;
+   public long asyncTime() default 5000;
 
 }
