@@ -104,7 +104,19 @@ public class WorkerIdServer {
                     int id = h % 1024;
 
                     workerId = id;
-                    JRedisHelper.setWorkerId(hostName, workerId);
+                    if (!JRedisHelper.existsWorkerId(hostName)) {
+                        long oldWorkerId = workerId;
+                        while (JRedisHelper.existsWorkerIdSet(workerId)) {
+                            workerId = (workerId + 1L) % 1024;
+                            if (workerId == oldWorkerId) {
+                                log.error("machine code node cannot be applied, nodes number has reached its maximum value");
+                                throw new WorkerIdCantApply(String
+                                        .format("Machine code node cannot be applied, Nodes number has reached its maximum value"));
+                            }
+                        }
+                        JRedisHelper.setWorkerId(hostName, workerId);
+                        JRedisHelper.setWorkerIdSet(workerId);
+                    }
                 }
             } else {
                 if (LRedisHelper.existsWorkerId(hostName) != 0L) {
@@ -120,7 +132,19 @@ public class WorkerIdServer {
                     int id = h % 1024;
 
                     workerId = id;
-                    LRedisHelper.asyncSetWorkerId(hostName, workerId);
+                    if (LRedisHelper.exists(hostName) == 0L) {
+                        long oldWorkerId = workerId;
+                        while (LRedisHelper.existsWorkerIdSet(workerId)) {
+                            workerId = (workerId + 1L) % 1024;
+                            if (workerId == oldWorkerId) {
+                                log.error("machine code node cannot be applied, nodes number has reached its maximum value");
+                                throw new WorkerIdCantApply(String
+                                        .format("Machine code node cannot be applied, Nodes number has reached its maximum value"));
+                            }
+                        }
+                        LRedisHelper.asyncSetWorkerId(hostName, workerId);
+                        LRedisHelper.asyncSetWorkerIdSet(workerId);
+                    }
                 }
             }
 
