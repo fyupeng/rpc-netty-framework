@@ -2,7 +2,10 @@ package cn.fyupeng.hook;
 
 
 import cn.fyupeng.factory.ThreadPoolFactory;
+import cn.fyupeng.idworker.utils.JRedisHelper;
+import cn.fyupeng.util.IpUtils;
 import cn.fyupeng.util.NacosUtils;
+import com.alibaba.nacos.common.utils.IPUtil;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -27,6 +30,8 @@ public class ShutdownHook {
     public void addClearAllHook() {
         log.info("All services will be cancel after shutdown");
         Runtime.getRuntime().addShutdownHook(new Thread(()->{
+            JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
+            log.info("the cache for workId has bean cleared successfully");
             NacosUtils.clearRegistry();
             ThreadPoolFactory.shutdownAll();
         }));
