@@ -28,6 +28,7 @@ public class JRedisHelper {
 
     private static Object lock = new Object();
     private static final String workerIds = "worker-ids";
+    private static final String workerIdsSet = "worker-ids-set";
     private static final String retryReqIds = "retry-req-ids";
     private static Jedis jedis;
     private final static String DEFAULT_ADDRESS = "127.0.0.1:6379";
@@ -35,9 +36,6 @@ public class JRedisHelper {
 
     //2. 加载配置文件，只需加载一次
     static {
-        //2.1 创建Properties对象
-        Properties p = new Properties();
-        //2.2 调用p对象中的load方法进行配置文件的加载
         // 使用InPutStream流读取properties文件
         String currentWorkPath = System.getProperty("user.dir");
         InputStream is = null;
@@ -157,6 +155,19 @@ public class JRedisHelper {
         }
     }
 
+    public static boolean exists(String key) {
+        return jedis.exists(key);
+    }
+
+    public static void set(String key, String value) {
+        jedis.set(key, value);
+    }
+
+    public static String get(String key) {
+        return jedis.get(key);
+    }
+
+
     public static boolean existsWorkerId(String hostName) {
         synchronized (lock) {
             return jedis.exists(workerIds + ":" + hostName);
@@ -175,6 +186,24 @@ public class JRedisHelper {
             log.trace("setWorkerId key[{}]",hostName);
             jedis.set(workerIds + ":" + hostName, String.valueOf(workerId));
         }
+    }
+
+    public static void remWorkerId(String hostName) {
+        synchronized (lock) {
+            log.trace("remWorkerId key[{}]",hostName);
+            String workerId = getForHostName(hostName);
+            jedis.del(workerIds + ":" + hostName);
+            if (workerId != null)
+                jedis.srem(workerIdsSet, workerId);
+        }
+    }
+
+    public static boolean existsWorkerIdSet(long workerId) {
+        return jedis.sismember(workerIdsSet, String.valueOf(workerId));
+    }
+
+    public static void setWorkerIdSet(long workerId) {
+        jedis.sadd(workerIdsSet, String.valueOf(workerId));
     }
 
     public static boolean existsRetryResult(String retryRequestId) {
