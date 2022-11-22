@@ -1,5 +1,6 @@
 package cn.fyupeng.idworker;
 
+import cn.fyupeng.idworker.exception.WorkerIdCantApplyException;
 import cn.fyupeng.idworker.utils.JRedisHelper;
 import cn.fyupeng.idworker.utils.LRedisHelper;
 import cn.fyupeng.util.IpUtils;
@@ -110,7 +111,7 @@ public class WorkerIdServer {
                             workerId = (workerId + 1L) % 1024;
                             if (workerId == oldWorkerId) {
                                 log.error("machine code node cannot be applied, nodes number has reached its maximum value");
-                                throw new WorkerIdCantApply(String
+                                throw new WorkerIdCantApplyException(String
                                         .format("Machine code node cannot be applied, Nodes number has reached its maximum value"));
                             }
                         }
@@ -138,7 +139,7 @@ public class WorkerIdServer {
                             workerId = (workerId + 1L) % 1024;
                             if (workerId == oldWorkerId) {
                                 log.error("machine code node cannot be applied, nodes number has reached its maximum value");
-                                throw new WorkerIdCantApply(String
+                                throw new WorkerIdCantApplyException(String
                                         .format("Machine code node cannot be applied, Nodes number has reached its maximum value"));
                             }
                         }

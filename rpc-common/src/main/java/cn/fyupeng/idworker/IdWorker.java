@@ -1,5 +1,6 @@
 package cn.fyupeng.idworker;
 
+import cn.fyupeng.idworker.exception.InvalidSystemClockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +97,7 @@ public class IdWorker {
 
         if (timestamp < lastMillis) {
             logger.error("clock is moving backwards.  Rejecting requests until {}.", lastMillis);
-            throw new InvalidSystemClock(String.format(
+            throw new InvalidSystemClockException(String.format(
                     "Clock moved backwards.  Refusing to generate id for {} milliseconds", lastMillis - timestamp));
         }
 
