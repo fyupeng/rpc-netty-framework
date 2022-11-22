@@ -37,6 +37,7 @@ public class LRedisHelper {
 
     private static Object lock = new Object();
     private static final String workerIds = "worker-ids";
+    private static final String workerIdsSet = "worker-ids-set";
     private static final String retryReqIds = "retry-req-ids";
     private static StatefulRedisConnection<String, byte[]> strToByteConn;
     private static StatefulRedisConnection<String, String> strToStrConn;
@@ -219,6 +220,34 @@ public class LRedisHelper {
 
     public static void preLoad() {
         log.trace("trigger preload");
+    }
+
+    public static Long exists(String key) {
+        return strToStrSyncCommand.exists(key);
+    }
+
+    public static void syncSet(String key, String value) {
+        strToStrSyncCommand.set(key, value);
+    }
+
+    public static void asyncSet(String key, String value) {
+        strToStrAsyncCommand.set(key, value);
+    }
+
+    public static String get(String key) {
+        return strToStrSyncCommand.get(key);
+    }
+
+    public static boolean existsWorkerIdSet(long workerId) {
+        return strToStrSyncCommand.sismember(workerIdsSet, String.valueOf(workerId));
+    }
+
+    public static void syncSetWorkerIdSet(String workerId) {
+        strToStrSyncCommand.sadd(workerIdsSet, workerId);
+    }
+
+    public static void asyncSetWorkerIdSet(long workerId) {
+        strToStrAsyncCommand.sadd(workerIdsSet, String.valueOf(workerId));
     }
 
     public static Long existsWorkerId(String hostName) {
