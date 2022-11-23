@@ -1,10 +1,12 @@
 package cn.fyupeng.idworker;
 
+import cn.fyupeng.factory.ThreadPoolFactory;
 import cn.fyupeng.idworker.exception.InvalidSystemClockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
+import java.util.concurrent.*;
 
 public class IdWorker {
     /**
@@ -52,6 +54,7 @@ public class IdWorker {
     /**
      * 并发序列掩码
      * 二进制表示为 12 位 1 (ob111111111111=0xfff=4095)
+     * 也表示序列号最大数
      */
     protected long sequenceMask = -1L ^ (-1L << sequenceBits);
 
@@ -69,6 +72,27 @@ public class IdWorker {
      * 即毫秒内并发量
      */
     protected long sequence = 0L;
+    /**
+     * 最近时间阈值
+     */
+    protected long thresholdMills = 500L;
+
+    /**
+     * 最近时间缓存时间戳大小阈值
+     */
+    protected long thresholdSize = 3000;
+
+    /**
+     * 时间戳 - 序列号 id
+     */
+    private ConcurrentHashMap<Long, Long> timeStampMaxSequenceMap = new ConcurrentHashMap<>();
+
+    /**
+     * 自定义 最近时间保存 时间戳 清理启用的线程池
+     */
+    private ExecutorService timeStampClearExecutorService = ThreadPoolFactory.createDefaultThreadPool("timestamp-clear-pool");
+
+
     protected Logger logger = LoggerFactory.getLogger(IdWorker.class);
 
     public IdWorker(long workerId) {
@@ -94,28 +118,98 @@ public class IdWorker {
 
     public synchronized long nextId() {
         long timestamp = millisGen();
-
+        // 解决时钟回拨问题（低并发场景）
         if (timestamp < lastMillis) {
-            logger.error("clock is moving backwards.  Rejecting requests until {}.", lastMillis);
-            throw new InvalidSystemClockException(String.format(
-                    "Clock moved backwards.  Refusing to generate id for {} milliseconds", lastMillis - timestamp));
-        }
+            // 可以去 获取 之前该 时间戳 最大的序列号
+            // 并发还没有到最大值，可以对序列号递增
+            /**
+             * 当前回拨后 没有之前 时间戳生成 id，且可阻塞时间不超过 500 ms
+             * 1、保证最坏情况 不阻塞超过 500ms
+             * 2、否则 抛出异常，不再阻塞，因为超时该时间大概率会导致超时
+             */
+            Long clockBackMaxSequence;
+            long diff = lastMillis - timestamp;
 
+            if (diff > 1000L) {
+                logger.warn("clock is moving backwards more then 1000ms");
+                logger.error("clock is moving backwards.  Rejecting requests until {}.", lastMillis);
+                throw new InvalidSystemClockException(String.format(
+                        "Clock moved backwards.  Refusing to generate id for {} milliseconds", lastMillis - timestamp));
+            } else if (diff > 500L) {
+                logger.warn("clock is moving backwards more than 500ms");
+                long blockMillis = lastMillis - 500L;
+                // 阻塞到 500 ms 内，因为 500ms内 保留能获取到最大序列号的 时间戳
+                timestamp = tilNextMillis(blockMillis);
+                clockBackMaxSequence = timeStampMaxSequenceMap.get(timestamp);
+
+                if (clockBackMaxSequence != null && clockBackMaxSequence < sequenceMask) {
+                    sequence = clockBackMaxSequence + 1;
+                    // 继续维护 该时间戳的最大 序列号
+                    timeStampMaxSequenceMap.put(timestamp, sequence);
+                } else {
+                    logger.error("clock is moving backwards.  Rejecting requests until {}.", lastMillis);
+                    throw new InvalidSystemClockException(String.format(
+                            "Clock moved backwards.  Refusing to generate id for {} milliseconds", lastMillis - timestamp));
+                }
+                // 恢复 发生时钟回拨的 状态
+            } else {
+                logger.info("clock is moving backwards less than 500ms");
+                clockBackMaxSequence = timeStampMaxSequenceMap.get(timestamp);
+
+                if (clockBackMaxSequence != null && clockBackMaxSequence < sequenceMask) {
+                    sequence = clockBackMaxSequence + 1;
+                    // 继续维护 该时间戳的最大 序列号
+                    timeStampMaxSequenceMap.put(timestamp, sequence);
+                    // 时间回拨 小于 500ms，恢复回拨前时间戳 + 1ms，序列号 id
+                } else {
+                    timestamp = tilNextMillis(lastMillis);
+                    sequence = 0;
+                }
+            }
+
+        }
+        // 毫秒并发
         if (lastMillis == timestamp) {
             sequence = (sequence + 1) & sequenceMask;
+            // 序列号已经最大了，需要阻塞新的时间戳
+            // 表示这一毫秒并发量已达上限，新的请求会阻塞到新的时间戳中去
             if (sequence == 0)
                 timestamp = tilNextMillis(lastMillis);
         } else {
             sequence = 0;
         }
 
-        lastMillis = timestamp;
+        /**
+         * 由于 时间戳 跟 序列号 都是递增，所以序列号总会保持最大值
+         */
+        timeStampMaxSequenceMap.put(timestamp, sequence);
+        // 当并发严重致保存时间戳超过阈值时，考虑垃圾清理
+        if (timeStampMaxSequenceMap.size() > thresholdSize){
+            timeStampClearExecutorService.execute(() -> {
+                // 遍历清除 timeStamp 比 最近时间阈值 更前的时间戳
+                timeStampMaxSequenceMap.keySet().stream().forEach(entryTimeStamp -> {
+                    if (lastMillis - entryTimeStamp > thresholdMills) {
+                        timeStampMaxSequenceMap.remove(entryTimeStamp);
+                    }
+                });
+            });
+        }
+        if (timestamp > lastMillis) {
+            // 保存 上一次时间戳
+            lastMillis = timestamp;
+        }
+
         long diff = timestamp - getEpoch();
         return (diff << timestampLeftShift) |
                 (workerId << workerIdShift) |
                 sequence;
     }
 
+    /**
+     * 阻塞生成下一个更大的时间戳
+     * @param lastMillis
+     * @return
+     */
     protected long tilNextMillis(long lastMillis) {
         long millis = millisGen();
         while (millis <= lastMillis)
