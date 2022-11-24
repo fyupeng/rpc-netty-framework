@@ -1,21 +1,23 @@
 ## 介绍
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.0.4&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.0&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
-![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.20.Final&color=blueviolet)
+![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
 ![Version](https://img.shields.io/static/v1?label=LICENCE&message=MIT&color=brightgreen)
 
 一个分布式微服务RPC框架 | [英文说明文档](README.md) | [SpringBoot整合RPC](springboot整合rpc-netty-framework.md)
 
 - [x] 基于`Socket`和`Netty`异步非阻塞通信的解决方案；
+- [x] 支持分布式超时重试机制、幂等历史结果淘汰策略、异步缓存实现高效通信；
+- [x] 实现采用`Jedis/Lettuce`两种基于雪花算法的`id`生成器;
 - [x] 支持`JDK`内置`SPI`机制，实现接口与实现解耦；
 - [x] 注册中心高可用性，提供集群注册中心，所有注册节点宕机后仍能通过缓存为用户持续提供服务；
 - [x] 提供个性化服务，推出个性化服务`name`、服务`group`，适合在测试、实验和正式环境的服务，以及为后期版本的兼容、维护和升级提供更好的服务；
 - [ ] 提供集群注册中心宕机重启服务；
 - [x] 提供服务无限制横向扩展；
 - [x] 提供服务的两种负载均衡策略，如随机和轮询负载；
-- [x] 提供请求超时重试，且保障业务执行的幂等性，超时重试能降低线程池任务的延迟，线程池保障了高并发场景下线程数创建数量的稳定，却因而带来延迟问题，处理该问题可以启用重试请求，且重试达到阈值将放弃请求，认为该服务暂时不可用，造成业务损耗，请慎用；
+- [ ] 提供请求超时重试，且保障业务执行的幂等性，超时重试能降低线程池任务的延迟，线程池保障了高并发场景下线程数创建数量的稳定，却因而带来延迟问题，处理该问题可以启用重试请求，且重试达到阈值将放弃请求，认为该服务暂时不可用，造成业务损耗，请慎用；
 - [ ] 提供自定义注解扩展服务，使用代理扩展，能无侵入式扩展个性化服务；
 - [x] 提供可扩展的序列化服务，目前提供`Kryo`和`Jackson`两种序列化方式；
 - [x] 提供日志框架`Logback`；
@@ -44,6 +46,7 @@
 - 信息摘要
 - 超时重试机制
 - 幂等性
+- 雪花算法
 ### 3. 设计模式
 - 单例模式
 - 动态代理
@@ -162,6 +165,15 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
     <version>2.0.4</version>
 </dependency>
 ```
+最新版本`2.1.0`还处于测试阶段，引入雪花算法、分布式缓存解决`2.0.0`版本超时仅单机可用而分布式失效问题。
+```xml
+<dependency>
+  <groupId>cn.fyupeng</groupId
+  <artifactId>rpc-core</artifactId>
+  <version>2.1.0</version>
+</dependency>
+```
+
 阿里仓库10月份开始处于系统升级，有些版本还没同步过去，推荐另一个`maven`官方仓库：
 ```xml
 <mirror>
@@ -262,13 +274,6 @@ cn.fyupeng.nacos.register-addr=localhost:8848
 
 ，兼容`springboot`的外部启动配置文件注入，需要在`Jar`包同目录下新建`config`文件夹，在`config`中与`springboot`一样注入配置文件，只不过`springboot`注入的配置文件默认约束名为`application.properties`，而`rpc-netty-framework`默认约束名为`resource.properties`。
 
-目前可注入的配置信息有：
-```properties
-cn.fyupeng.nacos.register-addr=localhost:8848
-cn.fyupeng.nacos.cluster.use=true
-cn.fyupeng.nacos.cluster.load-balancer=random
-cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:8849
-```
 
 #### 5.2 日志配置
 
@@ -374,7 +379,7 @@ private static RandomLoadBalancer randomLoadBalancer = new RandomLoadBalancer();
     private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.KRYO_SERIALIZER);
     private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
 
-    @Reference(retries = 2, timeout = 1000, asyncTime = 3000)
+    @Reference(retries = 2, timeout = 3000, asyncTime = 5000)
     private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
 ```
 重试的实现也不难，采用`代理 + for + 参数`来实现即可。
@@ -413,14 +418,99 @@ for (int i = 0; i <= retries; i++) {
 
 - 幂等性
 
-重试机制服务端要保证重试包的一次执行原则，即要实现幂等性
+重试机制服务端要保证重试包的一次执行原则，即要实现幂等性。
 
-实现思路：需要借助`HashSet`和`HashMap`来存放超时重试请求包的请求`id`和上一次请求执行结果，如何判定是否重试即可通过`Set`集合的`add`方法添加，添加失败即为重试包，将请求`id`对应上一次请求应返回结果返回给客户端即可，最后一步是做垃圾清理。
+实现思路：借助分布式缓存对首次请求包进行异步缓存请求`id`，分布式缓存选型`Redis`，客户端选型`Jedis与Lettuce`，给定一个`key`失效时间满足重试机制，减少再次清理缓存的步骤。
 
-由于考虑并发性，垃圾处理使用双重校验锁，即通过`if`判断`Set`阈值和`synchronized`关键字配合使用来实现。
+幂等性作用在失效时间，也影响到超时机制重试次数以及高并发场景，有雪花算法的优势，不同时间上不会生成重复id，于是可以大胆将失效时间设置大些，这取决于你能够承担多少内存而转而去考虑内存瓶颈的问题。
+
+### 9. 雪花算法
+```java
+/**
+     * 自定义 分布式唯一号 id
+     *  1 位 符号位
+     * 41 位 时间戳
+     * 10 位 工作机器 id
+     * 12 位 并发序列号
+     *
+     *       The distribute unique id is as follows :
+     * +---------------++---------------+---------------+-----------------+
+     * |     Sign      |     epoch     |    workerId   |     sequence     |
+     * |    1 bits     |    41 bits    |    10 bits   |      12 bits      |
+     * +---------------++---------------+---------------+-----------------+
+     */
+```
+- 介绍
+
+雪花算法：主要由时间戳、机器码、序列码这三者组成，各个部分有代表的意义。
+
+> 标志位
+
+表示符号位，固定值为`0`，表示正数。
+
+> 时间戳
+
+时间戳代表运行时长，它由`41`比特组成，最高可使用69年，由当前系统时间戳与服务启动当天凌晨时间戳的差值表示。
+
+> 机器码
+
+机器码代表分布式节点，它由`10`比特组成，最高可表示`1024`个机器码，默认采用当前服务主机号`hashCode`、高低位异或和分布式缓存算法生成，机器码生成异常时由`SecureRandom`使用随机种子、`AtomicLong`与`CAS`锁生成，当机器码数量最大时将抛出异常`WorkerIdCantApplyException`。
+
+> 序列号
+
+序列号代码并发量，在同一毫秒内发生作用，即毫秒并发时作为一部分唯一值，它由`12`比特组成，最高可表示`4096`个序列号。
+
+- 应用场景
+
+（1）多服务节点负载实现业务持久化主键唯一
+
+（2）毫秒内请求并发数最高可达到`4095`，可适当改变序列号满足不同场景 
+
+（3）满足基本有序的唯一号`id`，有利于高效索引查询和维护
+
+（4）`id`号前`6`位附加当前时间年月日日志查询，可作为日志记录
+
+而在`RPC`中主要采用雪花算法实现了请求包的唯一识别号，因为`UUID`生成唯一性和时间持续性比雪花算法更好，但它id值是非递增序列，在索引建立和维护时代价更高。
+
+雪花算法生成的`id`基本有序递增，可作为索引值，而且维护成本低，代价是强依赖机器时钟，为了尽可能发挥它的优势和减少不足，对最近的时间内保存了时间戳与序列号，回拨即获取当时序列号，有则自增，无则阻塞恢复到时钟回拨前的时间戳，回拨时间过大抛异常中断，而且服务器重启时小概率可能出现回拨会从而导致`id`值重复的问题。
+```properties
+cn.fyupeng.redis.server-addr=127.0.0.1:6379
+cn.fyupeng.redis.server-auth=true
+cn.fyupeng.redis.server-pwd=123456
+```
+除此以外，超时重试机制，在分布式场景下，第二次重试会通过负载均衡策略负载到其他服务节点，利用雪花算法弥补了分布式场景下的无法解决幂等性的问题。
+
+超时重试采用`Jedis/Lettuce`两种实现缓存的方式，可分别在服务端、客户端配置相应的缓存连接客户端方式：
+```properties
+cn.fyupeng.redis.server-way=lettuce
+cn.fyupeng.redis.client-way=jedis
+cn.fyupeng.redis.client-async=true
+```
+如何选择`JRedisHelper`与`LRedisHelper`呢？
+
+JRedisHelper
+- 线程安全
+- `synchronized`与`lock`的悲观锁机制
+- 不提供线程池
+- 连接数为`1`
+- 同步操作
+- 提供依据主机号缓存和获取机器`id`
+- 提供依据请求`id`缓存和获取请求结果
+
+LRedisHelper
+- 线程安全
+- 提供线程池
+- 连接数稳定且由线程池提供
+- 异步/同步操作
+- 提供依据主机号缓存和获取机器`id`
+- 提供依据请求`id`缓存和获取请求结果
+
+>特别提醒
+
+高并发请求不会出现请求号重复的情况，当前最高毫秒级并发`4096`，而超时机制、`LRedisHelper`线程池对连接的超时控制等配置参数还不成熟，具体应用场景可自行下载源码修改参数。
 
 
-### 9. 异常解决
+### 10. 异常解决
 - ServiceNotFoundException
 
 抛出异常`ServiceNotFoundException`
@@ -513,7 +603,19 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 抛出该异常后，将中断该线程，其线程还未执行的任务将终止，默认不会开启重试机制，则不会抛出该异常。
 
-### 10. 版本追踪
+- InvalidSystemClockException
+
+抛出异常`cn.fyupeng.idworker.exception.InvalidSystemClockException`
+
+雪花算法生成中是有很小概率出现时钟回拨，时间回拨需要解决`id`值重复的问题，故而有可能抛出`InvalidSystemClockException`中断异常，逻辑不可处理异常。
+
+- WorkerIdCantApplyException
+
+抛出异常`cn.fyupeng.idworker.exception.WorkerIdCantApplyException`
+
+雪花算法生成中，借助`IdWorker`生成器生成分布式唯一`id`时，是借助了机器码，当机器码数量生成达到最大值将不可再申请，这时将抛出中断异常`WorkerIdCantApplyException`。
+
+### 11. 版本追踪
 
 #### 1.0版本
 
@@ -531,7 +633,7 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 #### 2.0版本
 
-- [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]：优化1.0版本，2.0版本问世超时重试机制，使用到幂等性来解决业务损失问题，提高业务可靠性。
+- [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]：优化`1.0`版本，`2.0`版本问世超时重试机制，使用到幂等性来解决业务损失问题，提高业务可靠性。
 
 - [ [#2.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.1/pom) ]：版本维护
 
@@ -539,9 +641,11 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.0.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.3/pom) ]：提供个性化服务版本号，支持各种场景，如测试和正式场景，让服务具有更好的兼容性，支持版本维护和升级。
 
-- [ [#2.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.4/pom) ]：支持SPI机制，接口与实现解耦。
+- [ [#2.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.4/pom) ]：支持`SPI`机制，接口与实现解耦。
 
-### 11. 开发说明
+- [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]：引入雪花算法与分布式缓存，`2.0.0`版本仅支持单机幂等性，修复分布式场景失效问题，采用`轮询负载+超时机制`，能高效解决服务超时问题。
+
+### 12. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！
 
 

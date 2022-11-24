@@ -1,21 +1,23 @@
 ## Introduction
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.0.4&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.0&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
-![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.20.Final&color=blueviolet)
+![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
 ![Version](https://img.shields.io/static/v1?label=LICENCE&message=MIT&color=brightgreen)
 
 A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md) | [SpringBoot conformity RPC](springboot整合rpc-netty-framework.md)
 
 - [x] Solutions based on `Socket` and `Netty` asynchronous non-blocking communication.
+- [x] support distributed timeout retry mechanism, idempotent historical result elimination strategy, asynchronous caching for efficient communication.
+- [x] Implementation of `id` generator using `Jedis/Lettuce` two snowflake-based algorithms;
 - [x] Support for the `JDK` built-in `SPI` mechanism for decoupling interfaces from implementations.
 - [x] registry high availability, providing clustered registries that can continue to serve users through caching even after all registered nodes are down.
 - [x] Providing personalized services, introducing personalized service `name`, service `group`, suitable in test, experimental and formal environments, as well as providing better services for compatibility, maintenance and upgrading of later versions.
 - [ ] Provide cluster registry downtime restart service.
 - [x] Providing unlimited horizontal scaling of the service.
 - [x] provide two load balancing policies for the service, such as random and polled load.
-- [x] provide request timeout retry and guarantee the idempotency of business execution, timeout retry can reduce the delay of thread pool tasks, thread pool guarantees the stability of the number of threads created under high concurrency scenarios, but thus brings delay problems, deal with the problem can be enabled retry requests, and retry reaches the threshold will abandon the request, consider the service temporarily unavailable, resulting in business loss, please use with caution.
+- [ ] provide request timeout retry and guarantee the idempotency of business execution, timeout retry can reduce the delay of thread pool tasks, thread pool guarantees the stability of the number of threads created under high concurrency scenarios, but thus brings delay problems, deal with the problem can be enabled retry requests, and retry reaches the threshold will abandon the request, consider the service temporarily unavailable, resulting in business loss, please use with caution.
 - [ ] provide custom annotated extensions to the service, using proxy extensions that can non-intrusively extend personalized services.
 - [x] provide scalable serialization services, currently providing `Kryo` and `Jackson` two serialization methods .
 - [x] provide a logging framework `Logback`.
@@ -159,6 +161,16 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
   <version>2.0.4</version>
 </dependency>
 ```
+
+The latest version `2.1.0` is still in the testing stage, introducing snowflake algorithm, distributed cache to solve the `2.0.0` version timeout only single machine available and distributed failure problem.
+```xml
+<dependency>
+  <groupId>cn.fyupeng</groupId
+  <artifactId>rpc-core</artifactId>
+  <version>2.1.0</version>
+</dependency>
+```
+
 Ali repository in October began in the system upgrade, some versions have not been synchronized, recommend another `maven` official repository
 ```xml
 <mirror>
@@ -262,16 +274,6 @@ cn.fyupeng.nacos.register-addr=localhost:8848
 - `Jar` way to start
 
 , Compatible with `springboot` external startup configuration file injection, you need to create a `config` folder in the same directory as the `Jar` package, and inject the configuration file in `config` like `springboot`, but the configuration injected by `springboot` The file default constraint name is `application.properties`, and the `rpc-netty-framework` default constraint name is `resource.properties`.
-
-The currently injectable configuration information is:
-
-````properties
-
-cn.fyupeng.nacos.register-addr=localhost:8848
-cn.fyupeng.nacos.cluster.use=true
-cn.fyupeng.nacos.cluster.load-balancer=random
-cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:8849
-````
 
 #### 5.2 Log configuration
 
@@ -409,34 +411,103 @@ for (int i = 0; i <= retries; i++) {
     }
 }
 ```
+
 - Idempotency
 
-The retry mechanism server has to guarantee the principle of executing the retry package once, that is, to achieve idempotency
-  
-Implementation idea: you need to use `HashSet` and `HashMap` to store the request `id` of the retry request package and the execution result of the last request, how to determine whether to retry can be added by the `add` method of the `Set` collection, add failure is the retry package, the request `id` corresponding to the last request should return the result to the client, the last step is to do Garbage cleanup.
-  
-Because of concurrency considerations, garbage disposal using double-check lock, that is, through the `if` judgment `Set` threshold and `synchronized` keyword used in conjunction to achieve.
+The retry mechanism server side should guarantee the principle of executing the retry packet once, i.e., to achieve idempotency.
 
-> Core code implementations:
+Implementation idea: with the help of distributed cache for the first request packet asynchronous cache request `id`, distributed cache selection `Redis`, client selection `Jedis and Lettuce`, given a `key` expiration time to meet the retry mechanism to reduce the steps to clean up the cache again.
+
+The idempotency acts on the expiration time, which also affects the number of retries of the timeout mechanism as well as the high concurrency scenario. There is the advantage of the snowflake algorithm, which does not generate duplicate ids at different times, so you can boldly set the expiration time larger, depending on how much memory you can afford and turn to the memory bottleneck.
+
+
+### 9. Snowflakes algorithm 
+
 ```java
 /**
-             * 这里要防止重试
-             * 分为两种情况
-             * 1. 如果是 客户端发送给服务端 途中出现问题，请求包之前 服务器未获取到，也就是 唯一请求id号 没有重复
-             * 2. 如果是 服务端发回客户端途中出现问题，导致客户端触发 超时重试，这时服务端会 接收 重试请求包，也就是有 重复请求id号
-             */
-            // 请求id 为第一次请求 id
-            Object result = null;
-            if (timeoutRetryRequestIdSet.add(msg.getRequestId())) {
-                result = requestHandler.handler(msg);
-                resMap.put(msg.getRequestId(), result);
-            //请求id 为第二次或以上请求
-            } else {
-                result = resMap.get(msg.getRequestId());
-            }
+     * Custom distributed id number only
+     *  1-bit Symbol bit
+     * 41-bit Timestamp
+     * 10-bit Worker id
+     * 12-bit Concurrent Sequence Number
+     *
+     *       The distribute unique id is as follows :
+     * +---------------++---------------+---------------+-----------------+
+     * |     Sign      |     epoch     |    workerId   |     sequence     |
+     * |    1 bits     |    41 bits    |    10 bits   |      12 bits      |
+     * +---------------++---------------+---------------+-----------------+
+     */
 ```
 
-### 9. exception resolution
+- Introduction
+
+Snowflake algorithm: It mainly consists of three parts: timestamp, machine code and sequence code, and each part has a representative meaning.
+> Sign Bit
+
+Represents the sign bit, with a fixed value of `0`, indicating a positive number.
+> Timestamp
+
+The timestamp represents the running time, it consists of `41` bits and can be used up to 69 years, expressed by the difference between the current system timestamp and the early morning timestamp of the day the service starts.
+> Machine Code
+
+Machine code represents distributed nodes, it consists of `10` bits and can represent up to `1024` machine codes, which are generated by default using the current service host number `hashCode`, high-low dissimilarity and distributed caching algorithm, machine code generation exceptions are generated by `SecureRandom` using random seeds, `AtomicLong` and `CAS` locks, when machine code maximum number will throw an exception `WorkerIdCantApplyException`.
+> Sequence Number
+
+Sequence number code concurrency, which occurs in the same millisecond, i.e. millisecond concurrency as part of a unique value, it consists of `12` bits and can represent up to `4096` sequence numbers.
+
+- Application Scenarios
+
+(1) Multi-service node load to achieve business persistence primary key unique
+
+(2) The maximum number of concurrent requests within milliseconds can reach `4095`, and the sequence number can be changed appropriately to meet different scenarios
+  
+(3) Meet the basic ordered unique number `id`, conducive to efficient index query and maintenance
+  
+(4) `id` number before the `6` bit attached to the current time year month day log query, can be used as a log record
+
+And in `RPC` mainly used the snowflake algorithm to achieve the unique identification number of the request packet, because `UUUID` generation uniqueness and time continuity than the snowflake algorithm is better, but it id value is non-increasing sequence, in the index establishment and maintenance of higher cost.
+
+Snowflake algorithm generated `id` basic orderly incremental, can be used as an index value, and low maintenance costs, the cost is a strong dependence on the machine clock, in order to maximize its advantages and reduce the shortcomings, to the nearest time within the preservation of the timestamp and sequence number, dial back that obtain the sequence number at that time, with the self-incrementing, no blocking to restore the timestamp before the clock dial back, dial back too much time to throw an abnormal interruption, and the server restart when a small probability of possible redial will thus lead to `id` value duplication problem.
+
+```properties
+cn.fyupeng.redis.server-addr=127.0.0.1:6379
+cn.fyupeng.redis.server-auth=true
+cn.fyupeng.redis.server-pwd=123456
+```
+
+In addition to this, the timeout retry mechanism, in the distributed scenario, the second retry will be loaded to other service nodes through the load balancing policy, using the snowflake algorithm to make up for the problem of the inability to solve the idempotency in the distributed scenario.
+
+Timeout retry uses `Jedis/Lettuce` two ways to implement caching, and the corresponding caching connection client ways can be configured on the server side and client side respectively.
+
+```properties
+cn.fyupeng.redis.server-way=lettuce
+cn.fyupeng.redis.client-way=jedis
+cn.fyupeng.redis.client-async=true
+```
+
+How do I choose between `JRedisHelper` and `LRedisHelper`?
+
+JRedisHelper
+- Thread safety
+- Pessimistic locking mechanism for `synchronized` and `lock`
+- No thread pooling
+- Connection count of `1`
+- Synchronized operations
+- Cache and get machine `id` by host number
+- Cache and fetch request results based on request `id`
+
+LRedisHelper
+- Thread safety
+- Provides thread pooling
+- Connection count is stable and provided by the thread pool
+- Asynchronous/synchronous operations
+- Provides caching and fetching machine `id` by host number
+- Provide caching and fetching of request results based on request `id`
+>Special Reminder
+
+Highly concurrent requests do not have duplicate request numbers, the current maximum millisecond concurrency `4096`, and the timeout mechanism, `LRedisHelper` thread pool on the connection timeout control and other configuration parameters are not mature, specific application scenarios can download the source code to modify the parameters.
+
+### 10. exception resolution
 - ServiceNotFoundException
 
 Throws exception `ServiceNotFoundException`
@@ -520,13 +591,25 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - RetryTimeoutExcepton
 
-Throw exception `cn.fyupeng.exception.AnnotationMissingException`.
+Throw exception `cn.fyupeng.exception.AnnotationMissingException`
 
 After the retry mechanism is enabled, if the client fails to invoke the service after the number of retries, the service is considered unavailable and a timeout retry exception is thrown.
 
 After the exception is thrown, the thread will be interrupted and the tasks not yet executed by the thread will be terminated, and if the retry mechanism is not enabled by default, the exception will not be thrown.
 
-### 10. Version Tracking
+
+- InvalidSystemClockException
+
+Throw exception `cn.fyupeng.idworker.exception.InvalidSystemClockException`
+
+Snowflake algorithm generation is a small probability of clock redirection, time redirection needs to solve the problem of `id` value duplication, so it is possible to throw `InvalidSystemClockException` interrupt exception, logic can not handle the exception.
+- WorkerIdCantApplyException
+
+Throw exception `cn.fyupeng.idworker.exception.WorkerIdCantApplyException`
+
+Snowflake algorithm generation, with the help of `IdWorker` generator to generate a distributed unique `id`, is with the help of machine code, when the number of machine code generated to reach the maximum will no longer apply, then will throw an interrupt exception `WorkerIdCantApplyException`.
+
+### 11. Version Tracking
 
 #### Version 1.0
 
@@ -543,7 +626,7 @@ After the exception is thrown, the thread will be interrupted and the tasks not 
 - [ [#1.0.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/1.0.10/pom) ]: Repair the problem of `select` failure in load balancing, provide configuration center highly available cluster node injection configuration, load balancing configuration, fault-tolerant automatic switching
 
 #### version 2.0
-- [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]: Optimized version 1.0 version, version 2.0 introduced timeout retry mechanism, using to idempotency to solve the business loss problem and improve business reliability.
+- [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]: Optimized version `1.0` version, version `2.0` introduced timeout retry mechanism, using to idempotency to solve the business loss problem and improve business reliability.
 
 - [ [#2.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.1/pom )]: Version maintenance
 
@@ -551,10 +634,11 @@ After the exception is thrown, the thread will be interrupted and the tasks not 
 
 - [ [#2.0.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.3/pom )]: Provide personalized service version number to support various scenarios, such as test and formal scenarios, allowing better compatibility of services and supporting version maintenance and upgrades.
 
-- [ [#2.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.4/pom )]: Support SPI mechanism, interface and implementation decoupling.
+- [ [#2.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.4/pom )]: Support `SPI` mechanism, interface and implementation decoupling.
 
+- [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]: introduce snowflake algorithm and distributed cache, `2.0.0` version only supports single machine idempotency, fix the distributed scenario failure problem, use `polling load + timeout mechanism`, can efficiently solve the service timeout problem.
 
-### 10. Development Notes
+### 12. Development Notes
 
 If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation!
 
