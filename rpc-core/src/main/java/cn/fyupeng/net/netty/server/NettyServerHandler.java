@@ -47,7 +47,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
     private static HashMap<String, Object> resMap = new HashMap<>();
     */
     private static String redisServerWay = "";
-    private static String redisClientAsync = "";
+    private static String redisServerAsync = "";
 
     static {
         // 使用InPutStream流读取properties文件
@@ -67,23 +67,23 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                  */
                 //LRedisHelper.preLoad();
                 try {
-                    redisClientAsync = configResource.getString(PropertiesConstants.REDIS_CLIENT_ASYNC);
+                    redisServerAsync = configResource.getString(PropertiesConstants.REDIS_SERVER_ASYNC);
 
-                    if ("false".equals(redisClientAsync) || "default".equals(redisClientAsync) || StringUtils.isBlank(redisClientAsync)) {
-                        log.info("find redis client async attribute is false");
-                    } else if ("true".equals(redisClientAsync)) {
-                        log.info("find redis client async attribute is lettuce");
+                    if ("false".equals(redisServerAsync) || "default".equals(redisServerAsync) || StringUtils.isBlank(redisServerAsync)) {
+                        log.info("find redis server async attribute is false");
+                    } else if ("true".equals(redisServerAsync)) {
+                        log.info("find redis server async attribute is lettuce");
                     } else {
-                        throw new RuntimeException("redis client async attribute is illegal!");
+                        throw new RuntimeException("redis server async attribute is illegal!");
                     }
 
-                } catch (MissingResourceException redisClientAsyncException) {
-                    log.warn("redis client way attribute is missing");
-                    log.info("use default redis client default way: jedis");
-                    redisClientAsync = "false";
+                } catch (MissingResourceException redisServerAsyncException) {
+                    log.warn("redis server async attribute is missing");
+                    log.info("use default redis server default async: false");
+                    redisServerAsync = "false";
                 }
             } else {
-                throw new RuntimeException("redis client way attribute is illegal!");
+                throw new RuntimeException("redis server async attribute is illegal!");
             }
 
         } catch (MissingResourceException redisServerWayException) {
@@ -96,28 +96,28 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                     ResourceBundle resource = ResourceBundle.getBundle("resource");
                     redisServerWay = resource.getString(PropertiesConstants.REDIS_SERVER_WAY);
                 if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
-                    log.info("find redis client way attribute is jedis");
+                    log.info("find redis server way attribute is jedis");
                 } else if ("lettuce".equals(redisServerWay)) {
-                    log.info("find redis client way attribute is lettuce");
+                    log.info("find redis server way attribute is lettuce");
                     /**
                      * 由于 LRedisHelper 首次启动需要创建线程池，主动触发懒加载进行预加载
                      */
                     //LRedisHelper.preLoad();
                     try {
-                        redisClientAsync = resource.getString(PropertiesConstants.REDIS_CLIENT_ASYNC);
+                        redisServerAsync = resource.getString(PropertiesConstants.REDIS_SERVER_ASYNC);
 
-                        if ("false".equals(redisClientAsync) || "default".equals(redisClientAsync) || StringUtils.isBlank(redisClientAsync)) {
-                            log.info("find redis client async attribute is false");
-                        } else if ("true".equals(redisClientAsync)) {
-                            log.info("find redis client async attribute is lettuce");
+                        if ("false".equals(redisServerAsync) || "default".equals(redisServerAsync) || StringUtils.isBlank(redisServerAsync)) {
+                            log.info("find redis server async attribute is false");
+                        } else if ("true".equals(redisServerAsync)) {
+                            log.info("find redis server async attribute is lettuce");
                         } else {
-                            throw new RuntimeException("redis client async attribute is illegal!");
+                            throw new RuntimeException("redis server async attribute is illegal!");
                         }
 
-                    } catch (MissingResourceException redisClientAsyncException) {
-                        log.warn("redis client way attribute is missing");
-                        log.info("use default redis client default way: jedis");
-                        redisClientAsync = "false";
+                    } catch (MissingResourceException redisServerAsyncException) {
+                        log.warn("redis server async attribute is missing");
+                        log.info("use default redis server default async: false");
+                        redisServerAsync = "false";
                     }
                 } else {
                     throw new RuntimeException("redis client way attribute is illegal!");
@@ -125,7 +125,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
 
             } catch (MissingResourceException resourceException) {
                 log.info("not found resource from resource path: {}", "resource.properties");
-                log.info("use default redis client way: jedis");
+                log.info("use default redis server way: jedis");
                 redisServerWay = "jedis";
             }
             log.info("read resource from resource path: {}", "resource.properties");
@@ -179,7 +179,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                     log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
                     result = requestHandler.handler(msg);
                     CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.KRYO_SERIALIZER);
-                    if ("true".equals(redisClientAsync)) {
+                    if ("true".equals(redisServerAsync)) {
                         LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
                     } else {
                         LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));

@@ -22,6 +22,7 @@ A Distributed Microservice RPC Framework | [Chinese Documentation](README.CN.md)
 - [x] provide scalable serialization services, currently providing `Kryo` and `Jackson` two serialization methods .
 - [x] provide a logging framework `Logback`.
 - [x] provides Netty extensible communication protocol, the communication protocol header uses the same 16-bit magic number `0xCAFEBABE` as Class, packet identification id to identify request and response packets, `res` length to prevent sticky packets, and finally `res`, which internally adds a check digit and a unique identification id to allow the server to efficiently handle multiple different request packets or resend request packets at the same time, and packet validation.
+- [ ] Support second-level clock callback server to take the initiative to block the client request strategy, more than minutes-level clock callback server to take the initiative offline strategy.
 
 Architecture Diagram
 
@@ -482,7 +483,7 @@ Timeout retry uses `Jedis/Lettuce` two ways to implement caching, and the corres
 ```properties
 cn.fyupeng.redis.server-way=lettuce
 cn.fyupeng.redis.client-way=jedis
-cn.fyupeng.redis.client-async=true
+cn.fyupeng.redis.server-async=true
 ```
 
 How do I choose between `JRedisHelper` and `LRedisHelper`?

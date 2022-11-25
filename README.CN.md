@@ -22,6 +22,7 @@
 - [x] 提供可扩展的序列化服务，目前提供`Kryo`和`Jackson`两种序列化方式；
 - [x] 提供日志框架`Logback`；
 - [x] 提供Netty可扩展的通信协议，通信协议头使用与Class一样的16位魔数`0xCAFEBABE`、包辨识id，用来辨识请求包和响应包、`res`长度，用来防止粘包，以及最后的`res`，内部加入检验码和唯一识别id，让服务器能高效地同时处理多个不同请求包或重发请求包，以及包校验；
+- [ ] 支持秒级时钟回拨服务端采取主动屏蔽客户端请求策略、分级以上时钟回拨服务端采取主动下线策略
 
 架构图
 
@@ -484,7 +485,7 @@ cn.fyupeng.redis.server-pwd=123456
 ```properties
 cn.fyupeng.redis.server-way=lettuce
 cn.fyupeng.redis.client-way=jedis
-cn.fyupeng.redis.client-async=true
+cn.fyupeng.redis.server-async=true
 ```
 如何选择`JRedisHelper`与`LRedisHelper`呢？
 
