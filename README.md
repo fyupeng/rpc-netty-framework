@@ -28,8 +28,7 @@ Architecture Diagram
 
 - Retry mechanism architecture diagram
 
-![超时重试.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/超时重试.png)
-
+![分布式异步超时重试机制.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/分布式异步超时重试机制.png)
 
 - Service Discovery and Registration Architecture Diagram
 
