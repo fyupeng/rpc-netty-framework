@@ -35,7 +35,7 @@ Architecture Diagram
 ![服务发现与注册.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/服务发现与注册.png)
 
 
-### 1. service provisioning
+### 1. Service Provisioning
 - Load Balancing Policy
 - Serialization policy
 - Auto-discovery and logout services
@@ -639,6 +639,10 @@ Snowflake algorithm generation, with the help of `IdWorker` generator to generat
 - [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]: introduce snowflake algorithm and distributed cache, `2.0.0` version only supports single machine idempotency, fix the distributed scenario failure problem, use `polling load + timeout mechanism`, can efficiently solve the service timeout problem.
 
 - [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]: Change the configuration information `cn.fyupeng.client-async` to `cn.fyupeng.server-async`.
+
+- [ [#2.1.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.3/pom) ]：Fix public network get 403 exception.
+
+- [ [#2.1.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：Fix the default default error reporting exception of `group` in the registration center。
 
 ### 12. Development Notes
 

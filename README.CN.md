@@ -646,7 +646,11 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]：引入雪花算法与分布式缓存，`2.0.0`版本仅支持单机幂等性，修复分布式场景失效问题，采用`轮询负载+超时机制`，能高效解决服务超时问题。
 
-- [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]：更改配置信息`cn.fyupeng.client-async`为`cn.fyupeng.server-async`
+- [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]：更改配置信息`cn.fyupeng.client-async`为`cn.fyupeng.server-async`。
+
+- [ [#2.1.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.3/pom) ]：修复公网获取403异常。
+
+- [ [#2.1.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：修复注册中心`group`默认缺省报错异常。
 
 
 ### 12. 开发说明
