@@ -81,11 +81,11 @@ public abstract class AbstractRpcServer implements RpcServer {
                Class<?>[] interfaces = clazz.getInterfaces();
                if ("".equals(group)) {
                   for (Class<?> oneInterface : interfaces) {
-                     publishService(obj, group, oneInterface.getCanonicalName());
+                     publishService(obj, oneInterface.getCanonicalName());
                   }
                } else {
                   for (Class<?> oneInterface : interfaces) {
-                     publishService(obj, oneInterface.getCanonicalName());
+                     publishService(obj, group, oneInterface.getCanonicalName());
                   }
                }
             } else {
