@@ -2,8 +2,15 @@ package cn.fyupeng.util;
 
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.StatusLine;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 
@@ -65,7 +72,6 @@ public class IpUtils {
      *@return
 
      */
-
     public static String getPubIpAddr() {
         try {
             URL url = new URL("http://pv.sohu.com/cityjson?ie=utf-8");
@@ -84,10 +90,45 @@ public class IpUtils {
             CitySN target = JsonUtils.jsonToPojo(webContent, CitySN.class);
             return target.getCip();
         } catch (Exception e) {
-            log.error("get public IP address error: {}", e);
-            return "error";
+            log.warn("get public IP address error: {}", e);
+            return getPubIpAddr0();
         }
     }
+
+    private static String getPubIpAddr0() {
+        String url = "https://ip.renfei.net/";
+        // 创建CloseableHttpClient
+        CloseableHttpClient client =  HttpClientBuilder.create().build();
+
+        HttpPost httpPost = new HttpPost(url);
+        /**
+         * Accept -- value
+         * xml、text/xml、application/xml ==> xml
+         * text、text/plain ==> ip
+         * text/html、application/xhtml+xml ==> html
+         */
+        httpPost.setHeader("Accept", "text/plain");
+        String result = "127.0.0.1";
+        try {
+            CloseableHttpResponse response = client.execute(httpPost);
+            log.info("response: {}", response);
+            log.info("response: {}", response.getEntity().getContent());
+            StatusLine statusLine = response.getStatusLine();
+            int statusCode = statusLine.getStatusCode();
+            if (statusCode != 200) {
+                log.error("statusCode={}", statusCode);
+                log.error("responseEntity={}", response.getEntity());
+                response.close();
+                throw new RuntimeException("接口调用失败");
+            }
+            result = EntityUtils.toString(response.getEntity(), "utf-8");
+            log.info("get public IP address result：{}", result);
+        } catch (IOException e) {
+            throw new RuntimeException("get public IP address error");
+        }
+        return result;
+    }
+
 
     public static void main(String[] args) {
         //boolean valid = IpUtils.valid("127.0.0.1");
