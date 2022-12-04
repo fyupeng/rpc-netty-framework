@@ -227,15 +227,19 @@ public class LRedisHelper {
     }
 
     public static void syncSet(String key, String value) {
+        log.debug("syncSet key[{}] - value[{}]",key, value);
         strToStrSyncCommand.set(key, value);
     }
 
     public static void asyncSet(String key, String value) {
+        log.debug("asyncSet key[{}] - value[{}]",key, value);
         strToStrAsyncCommand.set(key, value);
     }
 
     public static String get(String key) {
-        return strToStrSyncCommand.get(key);
+        String value = strToStrSyncCommand.get(key);
+        log.debug("get key[{}] - value[{}]",key, value);
+        return value;
     }
 
     public static boolean existsWorkerIdSet(long workerId) {
@@ -247,6 +251,7 @@ public class LRedisHelper {
     }
 
     public static void asyncSetWorkerIdSet(long workerId) {
+        log.debug("asyncSetWorkerIdSet set[{}] - value[{}]",workerIdsSet, workerId);
         strToStrAsyncCommand.sadd(workerIdsSet, String.valueOf(workerId));
     }
 
@@ -255,17 +260,18 @@ public class LRedisHelper {
     }
 
     public static String getForHostName(String hostName) {
-        log.trace("getForHostName key[{}]",hostName);
-        return strToStrSyncCommand.get(workerIds + ":" + hostName);
+        String value = strToStrSyncCommand.get(workerIds + ":" + hostName);
+        log.debug("getForHostName key[{}] - value[{}]",hostName, value);
+        return value;
     }
 
     public static void asyncSetWorkerId(String hostName, long workerId) {
-        log.trace("asyncSetWorkerId key[{}] - value[{}]",hostName, workerId);
+        log.debug("asyncSetWorkerId key[{}] - value[{}]",hostName, workerId);
         strToStrAsyncCommand.set(workerIds + ":" + hostName, String.valueOf(workerId));
     }
 
     public static void syncSetWorkerId(String hostName, long workerId) {
-        log.trace("syncSetWorkerId key[{}] - value[{}]",hostName, workerId);
+        log.debug("syncSetWorkerId key[{}] - value[{}]",hostName, workerId);
         strToStrSyncCommand.set(workerIds + ":" + hostName, String.valueOf(workerId));
     }
 
@@ -274,17 +280,18 @@ public class LRedisHelper {
     }
 
     public static byte[] getForRetryRequestId(String retryRequestId) {
-        log.trace("getForRetryRequestId key[{}]",retryRequestId);
-        return strToByteSyncCommand.get(retryReqIds + ":" + retryRequestId);
+        byte[] value = strToByteSyncCommand.get(retryReqIds + ":" + retryRequestId);
+        log.debug("getForRetryRequestId key[{}] - value[{}]",retryRequestId, value);
+        return value;
     }
 
     public static void asyncSetRetryRequestResult(String retryRequestId, byte[] result) {
-        log.trace("asyncSetRetryRequestResult key[{}] - value[{}]",retryRequestId, result);
+        log.debug("asyncSetRetryRequestResult key[{}] - value[{}]",retryRequestId, result);
         strToByteAsyncCommand.set(retryReqIds + ":" + retryRequestId, result, new SetArgs().nx().ex(60));
     }
 
     public static void syncSetRetryRequestResult(String retryRequestId, byte[] result) {
-        log.trace("syncSetRetryRequestResult key[{}] - value[{}]",retryRequestId, result);
+        log.debug("syncSetRetryRequestResult key[{}] - value[{}]",retryRequestId, result);
         strToByteSyncCommand.set(retryReqIds + ":" + retryRequestId, result, new SetArgs().nx().ex(60));
     }
 

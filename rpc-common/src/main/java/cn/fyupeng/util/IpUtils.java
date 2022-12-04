@@ -67,7 +67,7 @@ public class IpUtils {
 
     /**
 
-     * 方法描述：获取公网ip
+     * 方法描述：获取公网ip（接口不稳定，ip稳定）
 
      *@return
 
@@ -90,11 +90,15 @@ public class IpUtils {
             CitySN target = JsonUtils.jsonToPojo(webContent, CitySN.class);
             return target.getCip();
         } catch (Exception e) {
-            log.warn("get public IP address error: {}", e);
+            log.warn("Primary interface query failed, secondary interface query is being called");
             return getPubIpAddr0();
         }
     }
 
+    /**
+     * 方法描述：获取公网ip（接口稳定，ip不稳定）
+     * @return
+     */
     private static String getPubIpAddr0() {
         String url = "https://ip.renfei.net/";
         // 创建CloseableHttpClient
@@ -111,18 +115,15 @@ public class IpUtils {
         String result = "127.0.0.1";
         try {
             CloseableHttpResponse response = client.execute(httpPost);
-            log.info("response: {}", response);
-            log.info("response: {}", response.getEntity().getContent());
             StatusLine statusLine = response.getStatusLine();
             int statusCode = statusLine.getStatusCode();
             if (statusCode != 200) {
                 log.error("statusCode={}", statusCode);
                 log.error("responseEntity={}", response.getEntity());
                 response.close();
-                throw new RuntimeException("接口调用失败");
+                throw new RuntimeException("get public IP address error");
             }
             result = EntityUtils.toString(response.getEntity(), "utf-8");
-            log.info("get public IP address result：{}", result);
         } catch (IOException e) {
             throw new RuntimeException("get public IP address error");
         }
@@ -133,8 +134,10 @@ public class IpUtils {
     public static void main(String[] args) {
         //boolean valid = IpUtils.valid("127.0.0.1");
         //System.out.println(valid);
-        String pubIpAddr = getPubIpAddr();
-        System.out.println(pubIpAddr);
+        for (int i = 0; i < 1; i++) {
+            String pubIpAddr = getPubIpAddr();
+            System.out.println(pubIpAddr);
+        }
     }
 
 }

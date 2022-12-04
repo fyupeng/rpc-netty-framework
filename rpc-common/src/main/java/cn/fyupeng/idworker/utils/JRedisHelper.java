@@ -176,21 +176,22 @@ public class JRedisHelper {
 
     public static String getForHostName(String hostName) {
         synchronized (lock) {
-            log.trace("getForHostName key[{}]",hostName);
-            return jedis.get(workerIds + ":" + hostName);
+            String value = jedis.get(workerIds + ":" + hostName);
+            log.debug("getForHostName key[{}] - value[{}]",hostName, value);
+            return value;
         }
     }
 
     public static void setWorkerId(String hostName, long workerId) {
         synchronized (lock) {
-            log.trace("setWorkerId key[{}]",hostName);
+            log.debug("setWorkerId key[{}] - value[{}]",hostName, workerId);
             jedis.set(workerIds + ":" + hostName, String.valueOf(workerId));
         }
     }
 
     public static void remWorkerId(String hostName) {
         synchronized (lock) {
-            log.trace("remWorkerId key[{}]",hostName);
+            log.debug("remWorkerId key[{}]",hostName);
             String workerId = getForHostName(hostName);
             jedis.del(workerIds + ":" + hostName);
             if (workerId != null)
@@ -203,6 +204,7 @@ public class JRedisHelper {
     }
 
     public static void setWorkerIdSet(long workerId) {
+        log.debug("setWorkerIdSet set[{}] - value[{}]",workerIdsSet, workerId);
         jedis.sadd(workerIdsSet, String.valueOf(workerId));
     }
 
@@ -214,14 +216,15 @@ public class JRedisHelper {
 
     public static String getForRetryRequestId(String retryRequestId) {
         synchronized (lock) {
-            log.trace("getForRetryRequestId key[{}]",retryRequestId);
-            return jedis.get(retryReqIds + ":" + retryRequestId);
+            String value = jedis.get(retryReqIds + ":" + retryRequestId);
+            log.debug("getForRetryRequestId key[{}] - value[{}]",retryRequestId, value);
+            return value;
         }
     }
 
     public static void setRetryRequestResult(String retryRequestId, String result) {
         synchronized (lock) {
-            log.trace("setRetryRequestResult key[{}]- value[{}]",retryRequestId, result);
+            log.debug("setRetryRequestResult key[{}]- value[{}]",retryRequestId, result);
             jedis.set(retryReqIds + ":" + retryRequestId, result, "NX", "EX", 60);
         }
     }
