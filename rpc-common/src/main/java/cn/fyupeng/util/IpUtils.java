@@ -9,10 +9,14 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 
+import javax.annotation.PreDestroy;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URL;
+import java.net.*;
+import java.util.Enumeration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @Auther: fyp
@@ -66,15 +70,57 @@ public class IpUtils {
     }
 
     /**
+     * 目前较为稳定
+     * @return
+     */
+    public static String getPubIpAddr() {
+        String ip = "";
+        String chinaz = "https://ip.chinaz.com";
 
-     * 方法描述：获取公网ip（接口不稳定，ip稳定）
+        StringBuilder inputLine = new StringBuilder();
+        String read = "";
+        URL url = null;
+        HttpURLConnection urlConnection = null;
+        BufferedReader in = null;
+        try {
+            url = new URL(chinaz);
+            urlConnection = (HttpURLConnection) url.openConnection();
+            in = new BufferedReader(new InputStreamReader(urlConnection.getInputStream(), "UTF-8"));
+            while ((read = in.readLine()) != null) {
+                inputLine.append(read + "\r\n");
+            }
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("get public IP address error: ", e);
+        } catch (IOException e) {
+            throw new RuntimeException("get public IP address error: " + e);
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        Pattern p = Pattern.compile("\\<dd class\\=\"fz24\">(.*?)\\<\\/dd>");
+        Matcher m = p.matcher(inputLine.toString());
+        if (m.find()) {
+            String ipstr = m.group(1);
+            ip = ipstr;
+        }
+        return ip;
+    }
+
+    /**
+
+     * 方法描述：获取公网ip（不稳定）
 
      *@return
 
      */
-    public static String getPubIpAddr() {
+    public static String getPubIpAddr0() {
         try {
-            URL url = new URL("http://pv.sohu.com/cityjson?ie=utf-8");
+            URL url = new URL("https://pv.sohu.com/cityjson?ie=utf-8");
             BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream()));
             String s = "";
             StringBuffer sb = new StringBuffer("");
@@ -91,7 +137,7 @@ public class IpUtils {
             return target.getCip();
         } catch (Exception e) {
             log.warn("Primary interface query failed, secondary interface query is being called");
-            return getPubIpAddr0();
+            return getPubIpAddr1();
         }
     }
 
@@ -99,7 +145,7 @@ public class IpUtils {
      * 方法描述：获取公网ip（接口稳定，ip不稳定）
      * @return
      */
-    private static String getPubIpAddr0() {
+    private static String getPubIpAddr1() {
         String url = "https://ip.renfei.net/";
         // 创建CloseableHttpClient
         CloseableHttpClient client =  HttpClientBuilder.create().build();
@@ -130,11 +176,43 @@ public class IpUtils {
         return result;
     }
 
+    public static String getInterIP1() throws Exception {
+        return InetAddress.getLocalHost().getHostAddress();
+    }
 
-    public static void main(String[] args) {
-        //boolean valid = IpUtils.valid("127.0.0.1");
-        //System.out.println(valid);
-        for (int i = 0; i < 1; i++) {
+    public static String getInterIP2() throws SocketException {
+        String localip = null;// 本地IP
+        String netip = null;// 外网IP
+        Enumeration<NetworkInterface> netInterfaces;
+        netInterfaces = NetworkInterface.getNetworkInterfaces();
+        InetAddress ip = null;
+        boolean finded = false;// 是否找到外网IP
+        while (netInterfaces.hasMoreElements() && !finded) {
+            NetworkInterface ni = netInterfaces.nextElement();
+            Enumeration<InetAddress> address = ni.getInetAddresses();
+            while (address.hasMoreElements()) {
+                ip = address.nextElement();
+                if (!ip.isSiteLocalAddress() && !ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":") == -1) {
+                    // 外网IP
+                    netip = ip.getHostAddress();
+                    finded = true;
+                    break;
+                } else if (ip.isSiteLocalAddress() && !ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":") == -1) {
+                    // 内网IP
+                    localip = ip.getHostAddress();
+                }
+            }
+        }
+        if (netip != null && !"".equals(netip)) {
+            return netip;
+        } else {
+            return localip;
+        }
+    }
+
+
+    public static void main(String[] args) throws Exception {
+        for (int i = 0; i < 10; i++) {
             String pubIpAddr = getPubIpAddr();
             System.out.println(pubIpAddr);
         }
