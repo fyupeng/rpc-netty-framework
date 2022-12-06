@@ -6,6 +6,7 @@ import cn.fyupeng.serializer.CommonSerializer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @Auther: fyp
@@ -14,6 +15,7 @@ import io.netty.handler.codec.MessageToByteEncoder;
  * @Package: cn.fyupeng.codec
  * @Version: 1.0
  */
+@Slf4j
 public class CommonEncoder extends MessageToByteEncoder {
 
     // 对象头的魔术: cafe babe 表示 class 类型的文件
@@ -55,7 +57,9 @@ public class CommonEncoder extends MessageToByteEncoder {
         }
         out.writeInt(serializer.getCode()); // 写进的四个字节
         byte[] bytes = serializer.serialize(msg);
+        int length = bytes.length;
         out.writeInt(bytes.length); // 写进的四个字节
+        log.info("encode object length [{}] bytes", length);
         out.writeBytes(bytes); // 写进的 对象内容，二进制形式
     }
 }

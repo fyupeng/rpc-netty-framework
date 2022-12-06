@@ -35,7 +35,9 @@ public class ObjectWriter {
         }
         outputStream.write(int2Bytes(serializer.getCode()));
         byte[] bytes = serializer.serialize(object);
-        outputStream.write(int2Bytes(bytes.length));
+        int length = bytes.length;
+        outputStream.write(int2Bytes(length));
+        log.info("encode object length [{}] bytes", length);
         outputStream.write(bytes);
         // 流 经过了 优化，如果 缓存太小的话，不会立即 写入 输出流，而是 保存到了缓存中， 会在 写入一定 大小后，再 调用 flush() 方法 批量 写入 输出流
         outputStream.flush();

@@ -42,14 +42,15 @@ public class RequestHandler {
            long end = System.currentTimeMillis();
            log.info("-- 执行耗时：{}ms", (end - begin)/100);
        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException | RpcException e) {
-           log.error("Error occurred while invoking or sending! info: ", e);
+           log.error("Error occurred while invoking or sending: ", e);
            return e;
        }
        // 捕获异常不会return 具体调用的方法结果
        return result;
    }
    private Object invokeTargetMethod(RpcRequest rpcRequest, Object service) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
+       log.debug("Proxy target Service {}", service);
+       log.debug("Service: {} is invoking method [{}], paramTypes [{}] ,parameters [{}]", rpcRequest.getInterfaceName(), rpcRequest.getMethodName(), rpcRequest.getParamTypes(), rpcRequest.getParameters());
        Method method = service.getClass().getMethod(rpcRequest.getMethodName(), rpcRequest.getParamTypes());
        // 调用方法的 返回结果
        return method.invoke(service, rpcRequest.getParameters());

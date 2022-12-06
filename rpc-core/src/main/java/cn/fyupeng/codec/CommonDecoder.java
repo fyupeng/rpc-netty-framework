@@ -51,6 +51,7 @@ public class CommonDecoder extends ReplayingDecoder {
         }
         int length = in.readInt();// 读取 4 字节 数据长度
         byte[] bytes = new byte[length];
+        log.info("decode object length [{}]", length);
         in.readBytes(bytes);
         // 自定义 反序列化器 对 二进制 反序列化 为 实例
         Object obj = serializer.deserialize(bytes, packageClass);

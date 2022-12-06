@@ -36,6 +36,7 @@ public class DefaultServiceProvider implements ServiceProvider {
     @Override
     public synchronized Object getServiceProvider(String serviceName) throws ServiceNotFoundException {
         Object service = serviceMap.get(serviceName);
+        log.debug("getServiceProvider - service [{}]", service);
         if (service == null) {
             throw new ServiceNotFoundException("Service Not Found Exception!");
         }

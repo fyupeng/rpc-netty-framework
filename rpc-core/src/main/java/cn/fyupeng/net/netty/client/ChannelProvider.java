@@ -78,6 +78,7 @@ public class ChannelProvider {
             log.error("error occurred while customer connecting server: {}", e.getMessage());
             throw new ConnectFailedException("error occurred while customer connecting server Exception");
         }
+        log.debug("get channel: key [{}] - channel [{}]",key, channel);
         channels.put(key, channel);
         return channel;
 
@@ -86,10 +87,13 @@ public class ChannelProvider {
     private static Channel connect(Bootstrap bootstrap, InetSocketAddress address) throws ExecutionException, InterruptedException {
 
         CompletableFuture<Channel> completableFuture = new CompletableFuture<>();
+        log.debug("try to connect to target address [{}:{}]",address.getHostName(),address.getPort());
         ChannelFuture channelFuture = bootstrap.connect(address);
         channelFuture.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
+                log.debug("connect operationComplete: future [{}]", future);
+                log.debug("connect operationComplete: future.isSuccess [{}]", future.isSuccess());
                 if (future.isSuccess()) {
                     // future 并不能 直接 拿到，得等待返回
                     completableFuture.complete(future.channel());

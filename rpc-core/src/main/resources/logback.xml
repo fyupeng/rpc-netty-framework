@@ -19,11 +19,11 @@
     <!--<logger name="org.springframework.security.web" level="DEBUG" additivity="false">
         <appender-ref ref="STDOUT"/>
     </logger>-->
-<!--    <logger name="c" level="info" additivity="false">-->
-<!--        <appender-ref ref="STDOUT"/>-->
-<!--    </logger>-->
+    <!--    <logger name="c" level="info" additivity="false">-->
+    <!--        <appender-ref ref="STDOUT"/>-->
+    <!--    </logger>-->
 
-    <root level="info">
+    <root level="debug">
         <appender-ref ref="console"/>
     </root>
 </configuration>
