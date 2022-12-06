@@ -1,10 +1,13 @@
 package cn.fyupeng.serializer;
 
+import cn.fyupeng.enums.SerializerCode;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.InputChunked;
 import com.esotericsoftware.kryo.io.Output;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
+import com.esotericsoftware.kryo.io.OutputChunked;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayInputStream;
@@ -32,34 +35,44 @@ public class KryoSerializer implements CommonSerializer {
 
     @Override
     public byte[] serialize(Object obj) {
-        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-             Output output = new Output(byteArrayOutputStream,100000)){
+        byte[] data = null;
+        try (ByteArrayOutputStream os = new ByteArrayOutputStream();
+             //OutputChunked output = new OutputChunked(byteArrayOutputStream, 1000000);
+             Output output = new Output(os,1000000)){
+
             Kryo kryo = kryoThreadLocal.get();
             kryo.writeObject(output, obj);
             kryoThreadLocal.remove();
-            return output.toBytes();
+            output.flush();
+            output.getOutputStream().flush();
+            data = os.toByteArray();
         } catch (IOException e) {
             log.error("Error occurred while serializing: ",e);
-            return null;
         }
+        return data;
     }
 
     @Override
-    public Object deserialize(byte[] bytes, Class<?> clazz) {
-        try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-             Input input = new Input(byteArrayInputStream)){
-            Kryo kryo = kryoThreadLocal.get();
-            Object o = kryo.readObject(input, clazz);
-            kryoThreadLocal.remove();
-            return o;
-        } catch (IOException e) {
-            log.error("Error occurred while deserializing: {}",e);
+    public Object deserialize(byte[] data, Class<?> clazz) {
+        if (data == null) {
             return null;
         }
+        Object obj = null;
+        try (ByteArrayInputStream is = new ByteArrayInputStream(data);
+             //InputChunked input = new InputChunked(byteArrayInputStream, 1000000);
+             Input input = new Input(is, data.length);
+        ){
+            Kryo kryo = kryoThreadLocal.get();
+            obj = kryo.readObject(input, clazz);
+            kryoThreadLocal.remove();
+        } catch (IOException e) {
+            log.error("Error occurred while deserializing: {}",e);
+        }
+        return obj;
     }
 
     @Override
     public int getCode() {
-        return 0;
+        return SerializerCode.valueOf("KRYO").getCode();
     }
 }

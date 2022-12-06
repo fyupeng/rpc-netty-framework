@@ -41,6 +41,11 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
     private static HashSet<String> timeoutRetryRequestIdSet = new HashSet<>();
 
     /**
+     * Lettuce 分布式缓存采用 HESSIAN 序列化方式
+     */
+    private static CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER);
+
+    /**
      * 保存上一次的请求执行 结果
 
     // 多线程可超时幂等性处理
@@ -166,10 +171,17 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
                     log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
                     result = requestHandler.handler(msg);
-                    JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
+                    log.info("requestHandler handler result: [{}]", result);
+                    if (result != null)
+                        JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
+                    else {
+                        JRedisHelper.setRetryRequestResult(msg.getRequestId(), null);
+                    }
                 } else {
                     result = JRedisHelper.getForRetryRequestId(msg.getRequestId());
-                    result = JsonUtils.jsonToPojo((String) result,  msg.getReturnType());
+                    if (result != null) {
+                        result = JsonUtils.jsonToPojo((String) result,  msg.getReturnType());
+                    }
                     log.info("Previous results:{} ", result);
                     log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
                 }
@@ -178,16 +190,22 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
                     log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
                     result = requestHandler.handler(msg);
-                    CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.KRYO_SERIALIZER);
-                    if ("true".equals(redisServerAsync)) {
+                    log.info("requestHandler handler result: [{}]", result);
+
+                    if ("true".equals(redisServerAsync) && result != null) {
                         LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
                     } else {
-                        LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                        if (result != null)
+                            LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                        else {
+                            LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), null);
+                        }
                     }
                 } else {
-                    CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.KRYO_SERIALIZER);
                     result = LRedisHelper.getForRetryRequestId(msg.getRequestId());
-                    result = serializer.deserialize((byte[]) result, msg.getReturnType());
+                    if (result != null) {
+                        result = serializer.deserialize((byte[]) result, msg.getReturnType());
+                    }
                     log.info("Previous results:{} ", result);
                     log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
                 }
@@ -223,8 +241,8 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 } else {
                     checkCode = null;
                 }
-
-                RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(),checkCode);
+                RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
+                log.info("server send back response [{}]", rpcResponse);
                 ChannelFuture future = ctx.writeAndFlush(rpcResponse);
 
 

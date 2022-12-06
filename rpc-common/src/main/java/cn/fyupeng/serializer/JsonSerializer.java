@@ -26,28 +26,30 @@ public class JsonSerializer implements CommonSerializer {
 
     @Override
     public byte[] serialize(Object obj) {
+        byte[] data = null;
         try {
-            return objectMapper.writeValueAsBytes(obj);
+            data = objectMapper.writeValueAsBytes(obj);
         } catch (JsonProcessingException e) {
             log.error("Error occurred while serializing, info: {}", e.getMessage());
-            //e.printStackTrace();
-            return null;
         }
+        return data;
     }
 
     @Override
-    public Object deserialize(byte[] bytes, Class<?> clazz) {
+    public Object deserialize(byte[] data, Class<?> clazz) {
+        if (data == null) {
+            return null;
+        }
+        Object obj = null;
         try {
-            Object obj = objectMapper.readValue(bytes, clazz);
+            obj = objectMapper.readValue(data, clazz);
             if (obj instanceof RpcRequest) {
                 obj = validateAndHandlerRequest(obj);
             }
-            return obj;
         } catch (IOException e) {
             log.error("Error occurred while deserializing, info: ", e);
-            //e.printStackTrace();
-            return null;
         }
+        return obj;
     }
 
     /**

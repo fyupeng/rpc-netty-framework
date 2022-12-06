@@ -9,7 +9,8 @@ package cn.fyupeng.enums;
  */
 public enum SerializerCode {
     KRYO(0),// KRYO 序列化 方式
-    JSON(1); // JSON 序列化方式
+    JSON(1), // JSON 序列化方式
+    HESSIAN(2); // HESSIAN 序列化方式
     private final int code;
 
     SerializerCode(int code) {
