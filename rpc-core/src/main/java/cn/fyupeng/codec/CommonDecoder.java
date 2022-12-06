@@ -54,6 +54,7 @@ public class CommonDecoder extends ReplayingDecoder {
         log.info("decode object length [{}]", length);
         in.readBytes(bytes);
         // 自定义 反序列化器 对 二进制 反序列化 为 实例
+        log.info("serializer [{}] deserialize [{}]", serializer.getClass().getName(), packageClass.getName());
         Object obj = serializer.deserialize(bytes, packageClass);
         // 接着 传给 下一个 处理器 NettyServerHandler
         out.add(obj);
