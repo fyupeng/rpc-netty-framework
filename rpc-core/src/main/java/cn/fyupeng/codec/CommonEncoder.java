@@ -59,7 +59,7 @@ public class CommonEncoder extends MessageToByteEncoder {
         byte[] bytes = serializer.serialize(msg);
         int length = bytes.length;
         out.writeInt(bytes.length); // 写进的四个字节
-        log.info("encode object length [{}] bytes", length);
+        log.debug("encode object length [{}] bytes", length);
         out.writeBytes(bytes); // 写进的 对象内容，二进制形式
     }
 }
