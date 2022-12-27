@@ -1,6 +1,6 @@
 ## 介绍
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.0&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.7&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
@@ -158,24 +158,55 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 #### 1.2 maven引入
 
 引入以下`maven`，会一并引入`rpc-common`与默认使用的注册中心`nacos-client`相关依赖
-
+ 
 ```xml
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>2.0.4</version>
+    <version>1.0.10</version>
 </dependency>
 ```
-最新版本`2.1.0`还处于测试阶段，引入雪花算法、分布式缓存解决`2.0.0`版本超时仅单机可用而分布式失效问题。
+
+`2.1.0`版本之前仅支持配置
+```properties
+# 单机模式
+cn.fyupeng.nacos.register-addr=192.168.10.1:8848
+# 集群模式
+cn.fyupeng.nacos.cluster.use=false
+cn.fyupeng.nacos.cluster.load-balancer=round
+cn.fyupeng.nacos.cluster.nodes=192.168.43.33:8847|192.168.43.33.1:8848;192.168.43.33.1:8849
+```
+`1.0`版本仅支持`@Service`与`@ServiceScan`注解
+
+`2.1.0`及之后引入
+```properties
+# 单机模式
+cn.fyupeng.nacos.register-addr=192.168.10.1:8848
+# 集群模式
+cn.fyupeng.nacos.cluster.use=false
+cn.fyupeng.nacos.cluster.load-balancer=round
+cn.fyupeng.nacos.cluster.nodes=192.168.43.33:8847|192.168.43.33.1:8848;192.168.43.33.1:8849
+
+# 实现分布式缓存（必要，不做默认开启与否）
+cn.fyupeng.redis.server-addr=localhost:6379
+cn.fyupeng.redis.server-auth=true
+cn.fyupeng.redis.server-pwd=yupengRedis
+cn.fyupeng.redis.server-way=lettuce
+cn.fyupeng.redis.client-way=jedis
+cn.fyupeng.redis.server-async=true
+```
+支持注解`@Reference`，用于解决超时重试场景。
+
+推荐使用最新版本`2.1.7`，`2.0`版本引入分布式缓存，解决了分布式场景出现的一些问题。
 ```xml
 <dependency>
   <groupId>cn.fyupeng</groupId
   <artifactId>rpc-core</artifactId>
-  <version>2.1.0</version>
+  <version>2.1.7</version>
 </dependency>
 ```
 
-阿里仓库10月份开始处于系统升级，有些版本还没同步过去，推荐另一个`maven`官方仓库：
+阿里仓库`10`月份开始处于系统升级，有些版本还没同步过去，推荐另一个`maven`官方仓库：
 ```xml
 <mirror>
   <id>repo1maven</id>
@@ -616,6 +647,12 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 雪花算法生成中，借助`IdWorker`生成器生成分布式唯一`id`时，是借助了机器码，当机器码数量生成达到最大值将不可再申请，这时将抛出中断异常`WorkerIdCantApplyException`。
 
+- NoSuchMethodError
+
+抛出异常`io.netty.resolver.dns.DnsNameResolverBuilder.socketChannelType(Ljava/lang/Class;)Lio/netty/resolver/dns/DnsNameResolverBuilder`
+
+整合`SpringBoot`时会覆盖`netty`依赖和`lettuce`依赖，`SpringBoot2.1.2`之前，内含`netty`版本较低，而且`RPC`框架支持兼容`netty-all:4.1.52.Final`及以上，推荐使用`SpringBoot2.3.4.RELEASE`即以上可解决该问题。
+
 ### 11. 版本追踪
 
 #### 1.0版本
@@ -648,10 +685,11 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]：更改配置信息`cn.fyupeng.client-async`为`cn.fyupeng.server-async`。
 
-- [ [#2.1.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.3/pom) ]：修复公网获取403异常。
+- [ [#2.1.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.3/pom) ]：修复公网获取`403`异常。
 
 - [ [#2.1.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：修复注册中心`group`默认缺省报错异常。
 
+- [ [#2.1.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：修复保存文章正常，读取文章超出边界异常问题、解决防火墙下`netty`无法监听阿里云、腾讯云本地公网地址问题、修复查询为空/无返回值序列化逻辑异常问题、修复分布式缓存特情况下出现的序列化异常现象。
 
 ### 12. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！

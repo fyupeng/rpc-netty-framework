@@ -1,6 +1,6 @@
 ## Introduction
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.0&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.7&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
@@ -156,18 +156,49 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
 
 ```xml
 <dependency>
-  <groupId>cn.fyupeng</groupId
-  <artifactId>rpc-core</artifactId>
-  <version>2.0.4</version>
+<groupId>cn.fyupeng</groupId
+<artifactId>rpc-core</artifactId>
+<version>1.0.10</version>
 </dependency>
 ```
+Only configuration is supported before ``2.1.0`` version
 
-The latest version `2.1.0` is still in the testing stage, introducing snowflake algorithm, distributed cache to solve the `2.0.0` version timeout only single machine available and distributed failure problem.
+```properties
+# Standalone mode
+cn.fyupeng.nacos.register-addr=192.168.10.1:8848
+# Cluster mode
+cn.fyupeng.nacos.cluster.use=false
+cn.fyupeng.nacos.cluster.load-balancer=round
+cn.fyupeng.nacos.cluster.nodes=192.168.43.33:8847|192.168.43.33.1:8848;192.168.43.33.1:8849
+```
+
+Version `1.0` only supports `@Service` and `@ServiceScan` annotations
+
+``2.1.0`` and later introduced
+```properties
+# Standalone mode
+cn.fyupeng.nacos.register-addr=192.168.10.1:8848
+# Cluster mode
+cn.fyupeng.nacos.cluster.use=false
+cn.fyupeng.nacos.cluster.load-balancer=round
+cn.fyupeng.nacos.cluster.nodes=192.168.43.33:8847|192.168.43.33.1:8848;192.168.43.33.1:8849
+# Implement distributed caching (necessary, not to do default on or off)
+cn.fyupeng.redis.server-addr=localhost:6379
+cn.fyupeng.redis.server-auth=true
+cn.fyupeng.redis.server-pwd=yupengRedis
+cn.fyupeng.redis.server-way=lettuce
+cn.fyupeng.redis.client-way=jedis
+cn.fyupeng.redis.server-async=true
+```
+The annotation `@Reference` is supported for solving timeout retry scenarios.
+
+Recommend using the latest version ``2.1.7``, ``2.0`` version introduces distributed caching, which solves some problems arising from distributed scenarios.
+
 ```xml
 <dependency>
-  <groupId>cn.fyupeng</groupId
-  <artifactId>rpc-core</artifactId>
-  <version>2.1.0</version>
+<groupId>cn.fyupeng</groupId
+<artifactId>rpc-core</artifactId>
+<version>2.1.7</version>
 </dependency>
 ```
 
@@ -643,6 +674,9 @@ Snowflake algorithm generation, with the help of `IdWorker` generator to generat
 - [ [#2.1.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.3/pom) ]：Fix public network get 403 exception.
 
 - [ [#2.1.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：Fix the default default error reporting exception of `group` in the registration center。
+
+- [ [#2.1.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：Repair the problem of saving articles normally but reading articles beyond the boundary, solve the problem that `netty` cannot listen to the local public network address of Aliyun and Tencent Cloud under the firewall, repair the problem of serialization logic abnormality when the query is empty/no return value, and repair the serialization abnormality in the case of distributed cache special.
+
 
 ### 12. Development Notes
 
