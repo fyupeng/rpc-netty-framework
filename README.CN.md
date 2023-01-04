@@ -163,7 +163,7 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>1.0.10</version>
+    <version>2.0.5</version>
 </dependency>
 ```
 
@@ -177,6 +177,24 @@ cn.fyupeng.nacos.cluster.load-balancer=round
 cn.fyupeng.nacos.cluster.nodes=192.168.43.33:8847|192.168.43.33.1:8848;192.168.43.33.1:8849
 ```
 `1.0`版本仅支持`@Service`与`@ServiceScan`注解
+
+`2.0.5`版本为单机版本，支持`@Reference`注解，使用本地缓存来解决单节点超时重试，无法处理多节点超时重试。
+
+> **注意**
+
+使用注解`@Reference`获取代理必须将该注解所在类传递给代理，否则该注解将失效
+```java
+public class Client {
+  private static RandomLoadBalancer randomLoadBalancer = new RandomLoadBalancer();
+  private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.HESSIAN_SERIALIZER);
+  private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
+  /**
+   * 传递 Client.class 给代理，代理才能捕获到注解 @Reference
+   */
+  @Reference(name = "helloService", group = "1.0.0", retries = 2, timeout = 2000, asyncTime = 18000)
+  private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
+}
+```
 
 `2.1.0`及之后引入
 ```properties
@@ -681,6 +699,8 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.4/pom) ]：支持`SPI`机制，接口与实现解耦。
 
+- [ [#2.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.5/pom) ]：`2.0`将长期维护，`2.1`版本中继承`2.0`待解决的问题得到同步解决。
+
 - [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]：引入雪花算法与分布式缓存，`2.0.0`版本仅支持单机幂等性，修复分布式场景失效问题，采用`轮询负载+超时机制`，能高效解决服务超时问题。
 
 - [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]：更改配置信息`cn.fyupeng.client-async`为`cn.fyupeng.server-async`。
@@ -690,6 +710,8 @@ Output output = new Output(byteArrayOutputStream,100000))
 - [ [#2.1.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：修复注册中心`group`默认缺省报错异常。
 
 - [ [#2.1.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：修复保存文章正常，读取文章超出边界异常问题、解决防火墙下`netty`无法监听阿里云、腾讯云本地公网地址问题、修复查询为空/无返回值序列化逻辑异常问题、修复分布式缓存特情况下出现的序列化异常现象。
+
+- [ [#2.1.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：整体整改和性能优化。
 
 ### 12. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！

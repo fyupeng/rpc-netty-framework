@@ -174,6 +174,22 @@ cn.fyupeng.nacos.cluster.nodes=192.168.43.33:8847|192.168.43.33.1:8848;192.168.4
 
 Version `1.0` only supports `@Service` and `@ServiceScan` annotations
 
+Version `2.0.5` is a standalone version, supports `@Reference` annotation, uses local cache to solve single node timeout retry, can't handle multi-node timeout retry.
+> **Note**
+
+Use the annotation `@Reference` to get the proxy must pass the class where the annotation is located to the proxy, otherwise the annotation will be invalid
+```java
+public class Client {
+  private static RandomLoadBalancer randomLoadBalancer = new RandomLoadBalancer();
+  private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.HESSIAN_SERIALIZER);
+  private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
+  /**
+   * 传递 Client.class 给代理，代理才能捕获到注解 @Reference
+   */
+  @Reference(name = "helloService", group = "1.0.0", retries = 2, timeout = 2000, asyncTime = 18000)
+  private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
+}
+
 ``2.1.0`` and later introduced
 ```properties
 # Standalone mode
@@ -640,6 +656,12 @@ Throw exception `cn.fyupeng.idworker.exception.WorkerIdCantApplyException`
 
 Snowflake algorithm generation, with the help of `IdWorker` generator to generate a distributed unique `id`, is with the help of machine code, when the number of machine code generated to reach the maximum will no longer apply, then will throw an interrupt exception `WorkerIdCantApplyException`.
 
+- NoSuchMethodError
+
+Exception thrown `io.netty.resolver.dns.DnsNameResolverBuilder.socketChannelType(Ljava/lang/Class;)Lio/netty/resolver/dns/ DnsNameResolverBuilder`
+
+Integration of `SpringBoot` will override the `netty` dependency and `lettuce` dependency, `SpringBoot2.1.2` before the included `netty` version is low, and `RPC` framework support is compatible with `netty-all:4.1.52.Final` and above, it is recommended to use ` SpringBoot2.3.4.RELEASE` that is, above can solve the problem .
+
 ### 11. Version Tracking
 
 #### Version 1.0
@@ -659,25 +681,27 @@ Snowflake algorithm generation, with the help of `IdWorker` generator to generat
 #### version 2.0
 - [ [#2.0.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.0/pom) ]: Optimized version `1.0` version, version `2.0` introduced timeout retry mechanism, using to idempotency to solve the business loss problem and improve business reliability.
 
-- [ [#2.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.1/pom )]: Version maintenance
+- [ [#2.0.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.1/pom) ]: Version maintenance
 
-- [ [#2.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.2/pom )]: Repair the problems of downtime retry and load in the cluster configuration center
+- [ [#2.0.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.2/pom) ]: Repair the problems of downtime retry and load in the cluster configuration center
 
-- [ [#2.0.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.3/pom )]: Provide personalized service version number to support various scenarios, such as test and formal scenarios, allowing better compatibility of services and supporting version maintenance and upgrades.
+- [ [#2.0.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.3/pom) ]: Provide personalized service version number to support various scenarios, such as test and formal scenarios, allowing better compatibility of services and supporting version maintenance and upgrades.
 
-- [ [#2.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.4/pom )]: Support `SPI` mechanism, interface and implementation decoupling.
+- [ [#2.0.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.4/pom) ]: Support `SPI` mechanism, interface and implementation decoupling.
+
+- [ [#2.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.5/pom) ]: `2.0` will be maintained for a long time, and the issues to be solved by inheriting `2.0` in `2.1` version are solved simultaneously.
 
 - [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]: introduce snowflake algorithm and distributed cache, `2.0.0` version only supports single machine idempotency, fix the distributed scenario failure problem, use `polling load + timeout mechanism`, can efficiently solve the service timeout problem.
 
 - [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]: Change the configuration information `cn.fyupeng.client-async` to `cn.fyupeng.server-async`.
 
-- [ [#2.1.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.3/pom) ]：Fix public network get 403 exception.
+- [ [#2.1.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.3/pom) ]: Fix public network get 403 exception.
 
-- [ [#2.1.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：Fix the default default error reporting exception of `group` in the registration center。
+- [ [#2.1.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]: Fix the default default error reporting exception of `group` in the registration center.
 
-- [ [#2.1.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：Repair the problem of saving articles normally but reading articles beyond the boundary, solve the problem that `netty` cannot listen to the local public network address of Aliyun and Tencent Cloud under the firewall, repair the problem of serialization logic abnormality when the query is empty/no return value, and repair the serialization abnormality in the case of distributed cache special.
+- [ [#2.1.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]: Repair the problem of saving articles normally but reading articles beyond the boundary, solve the problem that `netty` cannot listen to the local public network address of Aliyun and Tencent Cloud under the firewall, repair the problem of serialization logic abnormality when the query is empty/no return value, and repair the serialization abnormality in the case of distributed cache special.
 
-
+- [ [#2.1.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]: Overall improvement and performance optimization.
 ### 12. Development Notes
 
 If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation!
