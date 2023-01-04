@@ -153,10 +153,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
              * 心跳包 只 作为 检测包，不做处理
              */
             if (msg.getHeartBeat()) {
-                log.trace("receive hearBeatPackage from customer...");
+                log.debug("receive hearBeatPackage from customer...");
                 return;
             }
-            log.info("server has received request: {}", msg);
+            log.info("server has received request package: {}", msg);
 
             // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
 
@@ -171,7 +171,6 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
                     log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
                     result = requestHandler.handler(msg);
-                    log.info("requestHandler handler result: [{}]", result);
                     if (result != null)
                         JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
                     else {
@@ -190,7 +189,6 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
                     log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
                     result = requestHandler.handler(msg);
-                    log.info("requestHandler handler result: [{}]", result);
 
                     if ("true".equals(redisServerAsync) && result != null) {
                         LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
@@ -242,7 +240,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                     checkCode = null;
                 }
                 RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
-                log.info("server send back response [{}]", rpcResponse);
+                log.info(String.format("server send back response package {requestId: %s, message: %s, statusCode: %s ]}", rpcResponse.getRequestId(), rpcResponse.getMessage(), rpcResponse.getStatusCode()));
                 ChannelFuture future = ctx.writeAndFlush(rpcResponse);
 
 
@@ -267,6 +265,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
 
 
             } else {
+                log.info("channel status [active: {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable() );
                 log.error("channel is not writable");
             }
             /**

@@ -121,7 +121,6 @@ public class NettyClient implements RpcClient {
             group.shutdownGracefully();
             return null;
         }
-        log.info("customer has connected to server successfully {}:{}",hostName, port);
         /**
          * fix(改进）
          * ChannelProvider 通过 CompletableFuture 的 complete 和 get 方法 获取了

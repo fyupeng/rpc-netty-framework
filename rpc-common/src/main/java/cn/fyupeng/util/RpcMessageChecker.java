@@ -101,7 +101,7 @@ public class RpcMessageChecker {
             //throw new ReceiveResponseException("package is damaged Exception");
             //e.printStackTrace();
         }
-        log.info("Packet verification succeeded!");
+        log.debug("Packet verification succeeded!");
         return true;
     }
 
@@ -172,7 +172,7 @@ public class RpcMessageChecker {
             throw new ReceiveResponseException("package is damaged Exception");
             //e.printStackTrace();
         }
-        log.info("Packet verification succeeded!");
+        log.debug("Packet verification succeeded!");
     }
 
 }

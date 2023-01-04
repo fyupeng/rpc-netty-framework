@@ -34,7 +34,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcResponse msg) throws Exception {
         try {
-            log.info(String.format("customer has received message: %s", msg));
+            log.info(String.format("customer has received response package {requestId: %s, message: %s, statusCode: %s ]}", msg.getRequestId(), msg.getMessage(), msg.getStatusCode()));
             /**
              * 1. 取出 缓存在 AttributeKey 中 常量池ConstantPool 的 ConcurrentMap<String, RpcResponse>
              *  key 为 "rpcResponse"的 AttributeKey<RpcResponse>
@@ -63,7 +63,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
             IdleState state = ((IdleStateEvent) evt).state();
             // 客户端 没有发送 数据了，设置 写超时总会被 触发，从而 发送心跳包 给 服务端
             if (state == IdleState.WRITER_IDLE) {
-                log.trace("Send heartbeat packets to server[{}]", ctx.channel().remoteAddress());
+                log.debug("Send heartbeat packets to server[{}]", ctx.channel().remoteAddress());
                 ChannelProvider.get((InetSocketAddress) ctx.channel().remoteAddress(), CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER));
                 RpcRequest rpcRequest = new RpcRequest();
                 rpcRequest.setHeartBeat(true);

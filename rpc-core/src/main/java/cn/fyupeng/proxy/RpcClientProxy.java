@@ -2,7 +2,7 @@ package cn.fyupeng.proxy;
 
 
 import cn.fyupeng.anotion.Reference;
-import cn.fyupeng.anotion.Service;
+import cn.fyupeng.exception.AsyncTimeUnreasonableException;
 import cn.fyupeng.exception.RetryTimeoutException;
 import cn.fyupeng.factory.SingleFactory;
 import cn.fyupeng.idworker.Sid;
@@ -67,6 +67,9 @@ public class RpcClientProxy implements InvocationHandler {
 
    /**
     * 用于可 超时重试 的动态代理，需要配合 @Reference使用
+    * 兼容 阻塞模式
+    * asyncTime 字段 缺省 或者 <= 0 将启用
+    * 注意，此时 timeout 、 retries 字段将失效
     * @param clazz 获取的服务类
     * @param pareClazz 使用 @Reference 所在类
     * @param <T>
@@ -79,6 +82,7 @@ public class RpcClientProxy implements InvocationHandler {
 
    /**
     * 用于普通动态代理，@Reference 将失效，已过时，不推荐使用
+    * 原因：无法识别到 @Reference, 服务名 和 版本号 不可用
     * @param clazz 获取的服务类
     * @param <T>
     * @return
@@ -170,14 +174,31 @@ public class RpcClientProxy implements InvocationHandler {
                break;
             }
          }
-
-         if (!useRetry) {
+         /**
+          * 1、识别不到 @Reference 注解执行
+          * 2、识别到 @Reference 且 asyncTime 缺省 或 asyncTime <= 0
+          */
+         if (!useRetry || asyncTime <= 0) {
+            log.debug("discover @Reference or asyncTime <= 0, will use blocking mode");
+            long startTime = System.currentTimeMillis();
             CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
             rpcResponse = completableFuture.get();
+            long endTime = System.currentTimeMillis();
+
+            log.info("handling the task takes time {} ms", endTime - startTime);
+
             RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
          } else {
+            /**
+             * 识别到 @Reference 注解 且 asyncTime > 0 执行
+             */
+            log.debug("discover @Reference and asyncTime > 0, will use blocking mode");
+            if (timeout >= asyncTime) {
+               log.error("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
+               throw new AsyncTimeUnreasonableException("Asynchronous time is unreasonable, it should greater than timeout");
+            }
             long handleTime = 0;
-            for (int i = 0; i <= retries; i++) {
+            for (int i = 0; i < retries; i++) {
                long startTime = System.currentTimeMillis();
 
                CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
@@ -186,15 +207,14 @@ public class RpcClientProxy implements InvocationHandler {
                } catch (TimeoutException e) {
                   // 忽视 超时引发的异常，自行处理，防止程序中断
                   timeoutRes.incrementAndGet();
-                  if (timeout >= asyncTime) {
-                     log.warn("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
-                  }
-                  log.warn("recommend that asyncTime [ {} ] should be greater than runeTime [ {} ]", asyncTime, System.currentTimeMillis() - startTime);
+                  log.warn("recommend that asyncTime [ {} ] should be greater than current task runeTime [ {} ]", asyncTime, System.currentTimeMillis() - startTime);
                   continue;
                }
 
                long endTime = System.currentTimeMillis();
                handleTime = endTime - startTime;
+               log.info("handling the task takes time {} ms", handleTime);
+
                if (handleTime >= timeout) {
                   // 超时重试
                   log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
@@ -211,7 +231,7 @@ public class RpcClientProxy implements InvocationHandler {
             log.info("client call failed counts {} [ rms: {}, tms: {} ]", errRes.incrementAndGet(), handleTime, timeout);
             // 客户端在这里无法探知是否成功收到服务器响应，只能确定该请求包 客户端已经抛弃了
             unprocessedRequests.remove(rpcRequest.getRequestId());
-            throw new RetryTimeoutException("重试调用超时超过阈值，通道关闭，该线程中断，强制抛出异常！");
+            throw new RetryTimeoutException("The retry call timeout exceeds the threshold, the channel is closed, the thread is interrupted, and an exception is forced to be thrown!");
          }
 
       }

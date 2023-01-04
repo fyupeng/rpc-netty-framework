@@ -45,9 +45,10 @@ public @interface Reference {
 
    /**
     * 异步时间，即等待服务端异步响应的时间
-    * 只在超时重试机制使用，非超时重试情况下默认使用 阻塞等待方式
+    * 只在超时重试机制使用，非超时重试情况下默认使用 阻塞等待方式（asyncTime 字段 缺省 或者 <= 0 将启用）
+    * 使用前须知： ${asyncTime} > ${timeout}
     * @return
     */
-   public long asyncTime() default 5000;
+   public long asyncTime() default 0;
 
 }

@@ -21,9 +21,9 @@ public class ThreadPoolFactory {
      * BLOCKING_QUEUE_CAPACITY ： 阻塞 队列 容量
      * KEEP_ALIVE_TIMEOUT ： 心跳（单位：每分钟）
      */
-    private static final int CORE_POOL_SIZE = 10;
+    private static final int CORE_POOL_SIZE = Runtime.getRuntime().availableProcessors();
     private static final int MAXIMUM_POOL_SIZE = 100;
-    private static final int BLOCKING_QUEUE_CAPACITY = 100;
+    private static final int BLOCKING_QUEUE_CAPACITY = 400;
     private static final int KEEP_ALIVE_TIMEOUT = 1;
 
     private static Map<String, ExecutorService> threadPoolsMap = new ConcurrentHashMap<>();

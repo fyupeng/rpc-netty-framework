@@ -96,6 +96,7 @@ public class ChannelProvider {
                 log.debug("connect operationComplete: future.isSuccess [{}]", future.isSuccess());
                 if (future.isSuccess()) {
                     // future 并不能 直接 拿到，得等待返回
+                    log.info("customer has connected to server [{}] successfully",address);
                     completableFuture.complete(future.channel());
                 }else {
                     throw new IllegalStateException();

@@ -40,7 +40,7 @@ public class RequestHandler {
            result = invokeTargetMethod(rpcRequest, service);
             log.info("Service: {} has invoked method: {} ", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
            long end = System.currentTimeMillis();
-           log.info("-- 执行耗时：{}ms", (end - begin)/100);
+           log.info("==> Task execution takes {} ms", (end - begin));
        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException | RpcException e) {
            log.error("Error occurred while invoking remote method: ", e);
            throw new RuntimeException("Error occurred while invoking remote method: " + e.getMessage());
