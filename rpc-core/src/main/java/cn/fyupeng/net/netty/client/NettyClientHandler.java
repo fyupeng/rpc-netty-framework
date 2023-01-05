@@ -52,6 +52,12 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
     }
 
     @Override
+    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+        //super.channelWritabilityChanged(ctx);
+        log.warn("trigger hi-lo channel buffer，now channel status:[active {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable());
+    }
+
+    @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         log.error("error occurred while invoking, error information:", cause);
         ctx.close();
