@@ -1,6 +1,6 @@
 ## 介绍
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.7&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.8&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
@@ -559,8 +559,145 @@ LRedisHelper
 
 高并发请求不会出现请求号重复的情况，当前最高毫秒级并发`4096`，而超时机制、`LRedisHelper`线程池对连接的超时控制等配置参数还不成熟，具体应用场景可自行下载源码修改参数。
 
+### 10. 高并发
 
-### 10. 异常解决
+在`Netty`高性能框架的支持下，有单`Reactor`单线程、单`Reactor`多线程和主从`Reactor`多线程，采用性能最好的主从`Reactor`多线程，优势在于多服务结点（多`channel`情况下）并发处理时，从`workGroup`中每个线程可以处理一个`channel`，实现并行处理，不过在单个`channel`承载高并发下，无法多个线程同时处理事件，因为一个`channel`只能绑定一个线程。
+
+如果多个线程同时处理一个`channel`，将会出现类似`Redis`多线程情况下，用`Jedis`操作出现的安全问题，这里因为多个线程应对一个`channe`l将会使情况变得异常复杂，这里跟`Redis`单线程一样，异曲同工，速度之快在于单线程不用考虑多线程之间的协调性，只要再次分发`channel`到线程池中执行，那个获取到`channel`的线程就可以去读取消息，自行写入返回消息给服务端即可。
+
+这样负责读取`channel`绑定的单线程只需要提交任务到线程池，不需阻塞，即可处理高并发请求。
+
+从代码细节上来讲，读取到`channel`事件，意味着缓存`buffer`已经被读走了，不会影响其他线程继续读取`channel`，当然这里会出现短暂的阻塞，因为读取也需要一定时间，所以不会出现多个任务提交执行出现交叉行为。
+
+这里读取之快又涉及到零拷贝，数据在用户态是不用拷贝的，直接透明使用。
+
+```java
+@Slf4j
+public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
+
+    private static RequestHandler requestHandler;
+  
+    /**
+     * Lettuce 分布式缓存采用 HESSIAN 序列化方式
+     */
+    private static CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER);
+  
+    /**
+     * netty 服务端采用 线程池处理耗时任务
+     */
+    private static final EventExecutorGroup group = new DefaultEventExecutorGroup(16);
+  
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
+      /**
+       * 心跳包 只 作为 检测包，不做处理
+       */
+      if (msg.getHeartBeat()) {
+        log.debug("receive hearBeatPackage from customer...");
+        return;
+      }
+      group.submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            log.info("server has received request package: {}", msg);
+  
+            // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
+  
+            /**
+             * 改良
+             * 使用 Redis 实现分布式缓存
+             *
+             */
+            Object result = null;
+  
+            if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
+              if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
+                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
+                result = requestHandler.handler(msg);
+                if (result != null)
+                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
+                else {
+                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), null);
+                }
+              } else {
+                result = JRedisHelper.getForRetryRequestId(msg.getRequestId());
+                if (result != null) {
+                  result = JsonUtils.jsonToPojo((String) result, msg.getReturnType());
+                }
+                log.info("Previous results:{} ", result);
+                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
+              }
+            } else {
+  
+              if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
+                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
+                result = requestHandler.handler(msg);
+  
+                if ("true".equals(redisServerAsync) && result != null) {
+                  LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                } else {
+                  if (result != null)
+                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                  else {
+                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), null);
+                  }
+                }
+              } else {
+                result = LRedisHelper.getForRetryRequestId(msg.getRequestId());
+                if (result != null) {
+                  result = serializer.deserialize((byte[]) result, msg.getReturnType());
+                }
+                log.info("Previous results:{} ", result);
+                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
+              }
+            }
+  
+            // 生成 校验码，客户端收到后 会 对 数据包 进行校验
+            if (ctx.channel().isActive() && ctx.channel().isWritable()) {
+              /**
+               * 这里要分两种情况：
+               * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
+               * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
+               */
+              String checkCode = "";
+              // 这里做了 当 data为 null checkCode 为 null，checkCode可作为 客户端的判断 返回值 依据
+              if (result != null) {
+                try {
+                  checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
+                } catch (UnsupportedEncodingException e) {
+                  log.error("binary stream conversion failure: ", e);
+                  //e.printStackTrace();
+                }
+              } else {
+                checkCode = null;
+              }
+              RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
+              log.info(String.format("server send back response package {requestId: %s, message: %s, statusCode: %s ]}", rpcResponse.getRequestId(), rpcResponse.getMessage(), rpcResponse.getStatusCode()));
+              ChannelFuture future = ctx.writeAndFlush(rpcResponse);
+  
+  
+            } else {
+              log.info("channel status [active: {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable());
+              log.error("channel is not writable");
+            }
+            /**
+             * 1. 通道关闭后，对于 心跳包 将不可用
+             * 2. 由于客户端 使用了 ChannelProvider 来 缓存 channel，这里关闭后，无法 发挥 channel 缓存的作用
+             */
+            //future.addListener(ChannelFutureListener.CLOSE);
+          } finally {
+            ReferenceCountUtil.release(msg);
+          }
+        }
+      });
+    }
+}
+```
+
+当然高并发下还要考虑一个问题，任务处理太慢时，不能让客户端一直阻塞等待，可以设置超时，避免因为服务端某一个任务影响到其他请求的执行，要让出给其他有需要的线程使用，于是引入的超时机制配合分布式缓存，在超时机制下，要么直接将第一次请求后服务端缓存的结果直接返回，要么直接失败，来保证它的一个高并发稳定性。
+
+### 11. 异常解决
 - ServiceNotFoundException
 
 抛出异常`ServiceNotFoundException`
@@ -671,7 +808,7 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 整合`SpringBoot`时会覆盖`netty`依赖和`lettuce`依赖，`SpringBoot2.1.2`之前，内含`netty`版本较低，而且`RPC`框架支持兼容`netty-all:4.1.52.Final`及以上，推荐使用`SpringBoot2.3.4.RELEASE`即以上可解决该问题。
 
-### 11. 版本追踪
+### 12. 版本追踪
 
 #### 1.0版本
 
@@ -701,6 +838,8 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.5/pom) ]：`2.0`将长期维护，`2.1`版本中继承`2.0`待解决的问题得到同步解决。
 
+- [ [#2.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.6/pom) ]：整体整改和性能优化。
+
 - [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]：引入雪花算法与分布式缓存，`2.0.0`版本仅支持单机幂等性，修复分布式场景失效问题，采用`轮询负载+超时机制`，能高效解决服务超时问题。
 
 - [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]：更改配置信息`cn.fyupeng.client-async`为`cn.fyupeng.server-async`。
@@ -713,7 +852,7 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.1.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]：整体整改和性能优化。
 
-### 12. 开发说明
+### 13. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！
 
 

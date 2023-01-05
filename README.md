@@ -1,6 +1,6 @@
 ## Introduction
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.7&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.8&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
@@ -554,7 +554,147 @@ LRedisHelper
 
 Highly concurrent requests do not have duplicate request numbers, the current maximum millisecond concurrency `4096`, and the timeout mechanism, `LRedisHelper` thread pool on the connection timeout control and other configuration parameters are not mature, specific application scenarios can download the source code to modify the parameters.
 
-### 10. exception resolution
+### 10. 高并发
+
+
+With the support of `Netty` high-performance framework, there are single `Reactor` single-threaded, single `Reactor` multi-threaded and master-slave `Reactor` multi-threaded, using the best performance master-slave `Reactor` multi-threaded, the advantage is that when concurrent processing of multiple service nodes (in the case of multiple `channel`), from the `workGroup` in each However, in the case of a single `channel` carrying high concurrency, multiple threads cannot process events simultaneously because a `channel` can only bind one thread.
+
+If multiple threads handle a `channel` at the same time, there will be a security problem similar to the one that occurs with `Redis` multi-threaded operation with `Jedis`, where multiple threads responding to a `channe`l will make the situation extremely complicated. As long as the `channel` is distributed again to the thread pool, the thread that gets the `channel` can read the message and write the return message to the server itself.
+
+This way, the single thread responsible for reading the `channel` bindings only needs to submit the task to the thread pool, without blocking, to handle the highly concurrent requests.
+
+In terms of code details, reading the `channel` event means that the cache `buffer` has been read and will not affect other threads to continue reading the `channel`, but of course there will be a short blocking here because reading also takes some time, so there will not be multiple tasks submitted to perform crossover behavior.
+
+The fast read here also involves zero copy, the data in the user state is not copied, directly transparent use.
+
+```java
+@Slf4j
+public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
+
+    private static RequestHandler requestHandler;
+  
+    /**
+     * Lettuce 分布式缓存采用 HESSIAN 序列化方式
+     */
+    private static CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER);
+  
+    /**
+     * netty 服务端采用 线程池处理耗时任务
+     */
+    private static final EventExecutorGroup group = new DefaultEventExecutorGroup(16);
+  
+    @Override
+    protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
+      /**
+       * 心跳包 只 作为 检测包，不做处理
+       */
+      if (msg.getHeartBeat()) {
+        log.debug("receive hearBeatPackage from customer...");
+        return;
+      }
+      group.submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            log.info("server has received request package: {}", msg);
+  
+            // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
+  
+            /**
+             * 改良
+             * 使用 Redis 实现分布式缓存
+             *
+             */
+            Object result = null;
+  
+            if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
+              if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
+                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
+                result = requestHandler.handler(msg);
+                if (result != null)
+                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
+                else {
+                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), null);
+                }
+              } else {
+                result = JRedisHelper.getForRetryRequestId(msg.getRequestId());
+                if (result != null) {
+                  result = JsonUtils.jsonToPojo((String) result, msg.getReturnType());
+                }
+                log.info("Previous results:{} ", result);
+                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
+              }
+            } else {
+  
+              if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
+                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
+                result = requestHandler.handler(msg);
+  
+                if ("true".equals(redisServerAsync) && result != null) {
+                  LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                } else {
+                  if (result != null)
+                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
+                  else {
+                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), null);
+                  }
+                }
+              } else {
+                result = LRedisHelper.getForRetryRequestId(msg.getRequestId());
+                if (result != null) {
+                  result = serializer.deserialize((byte[]) result, msg.getReturnType());
+                }
+                log.info("Previous results:{} ", result);
+                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
+              }
+            }
+  
+            // 生成 校验码，客户端收到后 会 对 数据包 进行校验
+            if (ctx.channel().isActive() && ctx.channel().isWritable()) {
+              /**
+               * 这里要分两种情况：
+               * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
+               * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
+               */
+              String checkCode = "";
+              // 这里做了 当 data为 null checkCode 为 null，checkCode可作为 客户端的判断 返回值 依据
+              if (result != null) {
+                try {
+                  checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
+                } catch (UnsupportedEncodingException e) {
+                  log.error("binary stream conversion failure: ", e);
+                  //e.printStackTrace();
+                }
+              } else {
+                checkCode = null;
+              }
+              RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
+              log.info(String.format("server send back response package {requestId: %s, message: %s, statusCode: %s ]}", rpcResponse.getRequestId(), rpcResponse.getMessage(), rpcResponse.getStatusCode()));
+              ChannelFuture future = ctx.writeAndFlush(rpcResponse);
+  
+  
+            } else {
+              log.info("channel status [active: {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable());
+              log.error("channel is not writable");
+            }
+            /**
+             * 1. 通道关闭后，对于 心跳包 将不可用
+             * 2. 由于客户端 使用了 ChannelProvider 来 缓存 channel，这里关闭后，无法 发挥 channel 缓存的作用
+             */
+            //future.addListener(ChannelFutureListener.CLOSE);
+          } finally {
+            ReferenceCountUtil.release(msg);
+          }
+        }
+      });
+    }
+}
+```
+
+Of course, there is still a problem to be considered under high concurrency. When the task processing is too slow, the client cannot be blocked and waited all the time. Timeout can be set to avoid giving up to other threads in need because a task on the server affects the execution of other requests. Therefore, the timeout mechanism introduced is combined with distributed cache. Under the timeout mechanism, either the result cached on the server after the first request is directly returned or directly failed, to ensure a high concurrency stability.
+
+
+### 11. exception resolution
 - ServiceNotFoundException
 
 Throws exception `ServiceNotFoundException`
@@ -662,7 +802,7 @@ Exception thrown `io.netty.resolver.dns.DnsNameResolverBuilder.socketChannelType
 
 Integration of `SpringBoot` will override the `netty` dependency and `lettuce` dependency, `SpringBoot2.1.2` before the included `netty` version is low, and `RPC` framework support is compatible with `netty-all:4.1.52.Final` and above, it is recommended to use ` SpringBoot2.3.4.RELEASE` that is, above can solve the problem .
 
-### 11. Version Tracking
+### 12. Version Tracking
 
 #### Version 1.0
 
@@ -691,6 +831,8 @@ Integration of `SpringBoot` will override the `netty` dependency and `lettuce` d
 
 - [ [#2.0.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.5/pom) ]: `2.0` will be maintained for a long time, and the issues to be solved by inheriting `2.0` in `2.1` version are solved simultaneously.
 
+- [ [#2.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.6/pom) ]: Overall improvement and performance optimization.
+
 - [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]: introduce snowflake algorithm and distributed cache, `2.0.0` version only supports single machine idempotency, fix the distributed scenario failure problem, use `polling load + timeout mechanism`, can efficiently solve the service timeout problem.
 
 - [ [#2.1.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.1/pom) ]: Change the configuration information `cn.fyupeng.client-async` to `cn.fyupeng.server-async`.
@@ -702,7 +844,7 @@ Integration of `SpringBoot` will override the `netty` dependency and `lettuce` d
 - [ [#2.1.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]: Repair the problem of saving articles normally but reading articles beyond the boundary, solve the problem that `netty` cannot listen to the local public network address of Aliyun and Tencent Cloud under the firewall, repair the problem of serialization logic abnormality when the query is empty/no return value, and repair the serialization abnormality in the case of distributed cache special.
 
 - [ [#2.1.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.5/pom) ]: Overall improvement and performance optimization.
-### 12. Development Notes
+### 13. Development Notes
 
 If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation!
 
