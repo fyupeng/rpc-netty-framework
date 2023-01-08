@@ -52,6 +52,9 @@ public class NettyServer extends AbstractRpcServer {
 
     private static String redisServerWay = "";
 
+    /**
+     * 服务器启动时 优先做一些预加载
+     */
     static {
         // 使用InPutStream流读取properties文件
         String currentWorkPath = System.getProperty("user.dir");
@@ -84,8 +87,11 @@ public class NettyServer extends AbstractRpcServer {
                 redisServerWay = "jedis";
             }
             log.info("read resource from resource path: {}", "resource.properties");
-
         }
+        /**
+         * 其他 预加载选项
+         */
+        NettyChannelDispatcher.init();
     }
 
     /**

@@ -9,7 +9,7 @@ package cn.fyupeng.enums;
  */
 public enum PackageType {
    REQUEST_PACK(726571, "req"),
-   RESPONSE_PACK(726574,"res");
+   RESPONSE_PACK(726573,"res");
 
    private final int code;
    private final  String message;

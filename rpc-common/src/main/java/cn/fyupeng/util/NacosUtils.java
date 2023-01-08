@@ -196,8 +196,8 @@ public class NacosUtils {
             log.error("Service occupy Internal Errors");
     }
 
-    public static void preLoad() {
-        log.trace("trigger preload");
+    public static void init() {
+        log.debug("nacos Services has initialize successfully!");
     }
 
 

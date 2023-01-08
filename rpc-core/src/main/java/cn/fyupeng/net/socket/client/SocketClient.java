@@ -52,7 +52,7 @@ public class SocketClient implements RpcClient {
             Object obj = ObjectReader.readObject(ois);
             RpcResponse rpcResponse = (RpcResponse) obj;
 
-            RpcMessageChecker.check(rpcRequest, rpcResponse);
+            //RpcMessageChecker.check(rpcRequest, rpcResponse);
 
             return rpcResponse;
 

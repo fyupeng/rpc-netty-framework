@@ -30,7 +30,7 @@ public class CommonDecoder extends ReplayingDecoder {
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws UnrecognizedException {
         int magic = in.readInt(); // 读取 4字节 魔数
         if (magic != MAGIC_NUMBER) {
-            log.error("Unrecognized protocol package: {}", magic);
+            log.error("Unrecognized protocol package: {}", Integer.toHexString(magic));
             throw new UnrecognizedException("Unrecognized protocol package error");
         }
         int packageCode = in.readInt(); // 读取 4 字节 协议包类型

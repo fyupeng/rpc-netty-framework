@@ -4,6 +4,7 @@ package cn.fyupeng.proxy;
 import cn.fyupeng.anotion.Reference;
 import cn.fyupeng.exception.AsyncTimeUnreasonableException;
 import cn.fyupeng.exception.RetryTimeoutException;
+import cn.fyupeng.exception.RpcTransmissionException;
 import cn.fyupeng.factory.SingleFactory;
 import cn.fyupeng.idworker.Sid;
 import cn.fyupeng.net.RpcClient;
@@ -57,6 +58,13 @@ public class RpcClientProxy implements InvocationHandler {
     */
    private static UnprocessedRequests unprocessedRequests = SingleFactory.getInstance(UnprocessedRequests.class);
 
+   static {
+      /**
+       * 预加载
+       */
+      NacosUtils.init();
+   }
+
    /**
     * @param rpcClient
     */
@@ -94,11 +102,6 @@ public class RpcClientProxy implements InvocationHandler {
 
    @Override
    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-
-      /**
-       * 预加载
-       */
-      NacosUtils.preLoad();
 
       RpcRequest rpcRequest = new RpcRequest.Builder()
               /**
@@ -198,6 +201,7 @@ public class RpcClientProxy implements InvocationHandler {
                throw new AsyncTimeUnreasonableException("Asynchronous time is unreasonable, it should greater than timeout");
             }
             long handleTime = 0;
+            boolean checkPass = false;
             for (int i = 0; i < retries; i++) {
                long startTime = System.currentTimeMillis();
 
@@ -222,11 +226,17 @@ public class RpcClientProxy implements InvocationHandler {
                } else {
                   // 没有超时不用再重试
                   // 进一步校验包
-                  if (RpcMessageChecker.check(rpcRequest, rpcResponse)) {
+                  checkPass = RpcMessageChecker.check(rpcRequest, rpcResponse);
+                  if (checkPass) {
                      log.info("client call success counts {} [ rms: {}, tms: {} ]", sucRes.incrementAndGet(), handleTime, timeout);
                      return rpcResponse.getData();
                   }
+                  // 包被 劫持触发 超时重发机制 保护重发
                }
+            }
+            // 最后一次 重发请求包 仍被劫持
+            if (!checkPass) {
+               throw new RpcTransmissionException("RPC data transmission is abnormal, the packet is hijacked to trigger the retransmission mechanism, the retransmission mechanism is frequently hijacked under retry, and the operation is interrupted here");
             }
             log.info("client call failed counts {} [ rms: {}, tms: {} ]", errRes.incrementAndGet(), handleTime, timeout);
             // 客户端在这里无法探知是否成功收到服务器响应，只能确定该请求包 客户端已经抛弃了
