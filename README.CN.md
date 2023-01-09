@@ -164,7 +164,7 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>2.0.5</version>
+    <version>2.0.8</version>
 </dependency>
 ```
 
@@ -221,7 +221,7 @@ cn.fyupeng.redis.server-async=true
 <dependency>
   <groupId>cn.fyupeng</groupId
   <artifactId>rpc-core</artifactId>
-  <version>2.1.7</version>
+  <version>2.1.9</version>
 </dependency>
 ```
 
@@ -808,6 +808,22 @@ Output output = new Output(byteArrayOutputStream,100000))
 抛出异常`io.netty.resolver.dns.DnsNameResolverBuilder.socketChannelType(Ljava/lang/Class;)Lio/netty/resolver/dns/DnsNameResolverBuilder`
 
 整合`SpringBoot`时会覆盖`netty`依赖和`lettuce`依赖，`SpringBoot2.1.2`之前，内含`netty`版本较低，而且`RPC`框架支持兼容`netty-all:4.1.52.Final`及以上，推荐使用`SpringBoot2.3.4.RELEASE`即以上可解决该问题。
+
+- AsyncTimeUnreasonableException
+
+抛出异常`cn.fyupeng.exception.AsyncTimeUnreasonableException`
+
+异步时间设置不合理异常，使用注解@Reference时，字段`asyncTime`必须大于`timeout`，这样才能保证超时时间内不会报异常`java.util.concurrent.TimeoutException`，否则最大超时时间将可能不可达并且会打印`warn`日志，导致触发下一次重试，该做法在`2.0.6`和`2.1.8`中将强制抛出异常终止线程。
+
+与此相同用法的有`RetryTimeoutExcepton`和`RpcTransmissionException`，都会终结任务执行。
+
+- RpcTransmissionException
+
+抛出异常`cn.fyupeng.exception.RpcTransmissionException`
+
+数据传输异常，在协议层解码中抛出的异常，一般是因为解析前的实现类与解析后接收实习类`toString()`方法协议不同导致的，也可能是包被劫持并且发生内容篡改。
+
+内部设计采用`toSring()`方法来，而不进行某一种固定的方式来校验，这让校验有更大的不确定性，以此获得更高的传输安全，当然这种设计可以让开发人员自行设计具有安全性的`toString`方法实现，如不实现，将继承`Object`的内存地址toString打印，由于是通过网络序列化传输的，也就是深克隆方式创建类，服务端的原校验码和待校验一般不同，就会抛该异常，一般都需要重新`toString()`方法。
 
 ### 12. 版本追踪
 

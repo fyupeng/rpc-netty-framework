@@ -159,7 +159,7 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
 <dependency>
 <groupId>cn.fyupeng</groupId
 <artifactId>rpc-core</artifactId>
-<version>1.0.10</version>
+<version>2.0.8</version>
 </dependency>
 ```
 Only configuration is supported before ``2.1.0`` version
@@ -215,7 +215,7 @@ Recommend using the latest version ``2.1.7``, ``2.0`` version introduces distrib
 <dependency>
 <groupId>cn.fyupeng</groupId
 <artifactId>rpc-core</artifactId>
-<version>2.1.7</version>
+<version>2.1.9</version>
 </dependency>
 ```
 
@@ -802,6 +802,22 @@ Snowflake algorithm generation, with the help of `IdWorker` generator to generat
 Exception thrown `io.netty.resolver.dns.DnsNameResolverBuilder.socketChannelType(Ljava/lang/Class;)Lio/netty/resolver/dns/ DnsNameResolverBuilder`
 
 Integration of `SpringBoot` will override the `netty` dependency and `lettuce` dependency, `SpringBoot2.1.2` before the included `netty` version is low, and `RPC` framework support is compatible with `netty-all:4.1.52.Final` and above, it is recommended to use ` SpringBoot2.3.4.RELEASE` that is, above can solve the problem .
+
+- AsyncTimeUnreasonableException
+
+Throw exception `cn.fyupeng.exception.AsyncTimeUnreasonableException`
+
+AsyncTimeUnreasonableException`, when using the @Reference annotation, the field `asyncTime` must be greater than `timeout` to ensure that the timeout will not report an exception `java.util.concurrent.TimeoutException`, otherwise the maximum timeout will probably be unreachable and will print `warn` log, causing the next retry to be triggered, which in `2.0.6` and `2.1.8` will force an exception to be thrown to terminate the thread.
+
+Similarly used are `RetryTimeoutExcepton` and `RpcTransmissionException`, both of which will terminate task execution.
+ 
+- RpcTransmissionException
+  
+Throw exception `cn.fyupeng.exception.RpcTransmissionException`
+
+Data transmission exception, thrown in the protocol layer decoding, usually because the implementation class before parsing and the receiving intern class `toString()` method protocol after parsing are different, or the package may be hijacked and the content is tampered.
+
+Internal design using `toSring ()` method to, rather than a certain fixed way to verify, which allows greater uncertainty in the verification, as a way to obtain a higher transmission security, of course, this design allows developers to design their own security `toString` method to achieve, such as not to achieve, will inherit `Object` memory address toString print, because it is transmitted through the network serialization, that is, the deep cloning method to create the class, the original checksum and the server side to be checked is generally different, it will throw the exception, generally need to re-`toString ()` method.
 
 ### 12. Version Tracking
 
