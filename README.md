@@ -636,7 +636,7 @@ Highly concurrent requests do not have duplicate request numbers, the current ma
 
 ---- 
 
-### 11. 高并发
+### 11. High Concurrency
 
 
 With the support of `Netty` high-performance framework, there are single `Reactor` single-threaded, single `Reactor` multi-threaded and master-slave `Reactor` multi-threaded, using the best performance master-slave `Reactor` multi-threaded, the advantage is that when concurrent processing of multiple service nodes (in the case of multiple `channel`), from the `workGroup` in each However, in the case of a single `channel` carrying high concurrency, multiple threads cannot process events simultaneously because a `channel` can only bind one thread.
