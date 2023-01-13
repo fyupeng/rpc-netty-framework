@@ -6,6 +6,7 @@ import cn.fyupeng.exception.AsyncTimeUnreasonableException;
 import cn.fyupeng.exception.RetryTimeoutException;
 import cn.fyupeng.exception.RpcTransmissionException;
 import cn.fyupeng.factory.SingleFactory;
+import cn.fyupeng.hook.ClientShutdownHook;
 import cn.fyupeng.idworker.Sid;
 import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.net.netty.client.NettyClient;
@@ -70,6 +71,10 @@ public class RpcClientProxy implements InvocationHandler {
     */
    public RpcClientProxy(RpcClient rpcClient) {
       this.rpcClient = rpcClient;
+      /**
+       * 客户端 清除钩子
+       */
+      ClientShutdownHook.getShutdownHook().addClearAllHook();
    }
 
 

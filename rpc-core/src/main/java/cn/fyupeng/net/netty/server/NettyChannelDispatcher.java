@@ -1,5 +1,6 @@
 package cn.fyupeng.net.netty.server;
 
+import cn.fyupeng.factory.ThreadPoolFactory;
 import cn.fyupeng.handler.RequestHandler;
 import cn.fyupeng.idworker.utils.JRedisHelper;
 import cn.fyupeng.idworker.utils.LRedisHelper;
@@ -22,6 +23,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 
 /**
  * @Auther: fyp
@@ -35,8 +37,11 @@ public class NettyChannelDispatcher {
 
     /**
      * netty 服务端采用 线程池处理耗时任务
-     */
-    private static final EventExecutorGroup group = new DefaultEventExecutorGroup(16);
+     * 抛弃 - 减少内存 开销，除了 Netty 内部必要的 事件线程组，其他线程的生命周期都由 ThreadPoolFactory 来管理
+
+    private static final EventExecutorGroup executorGroup = new DefaultEventExecutorGroup(16);
+    */
+    private static ExecutorService operationExecutorService = ThreadPoolFactory.createDefaultThreadPool("operation-executor-pool");
 
     /**
      * Lettuce 分布式缓存采用 HESSIAN 序列化方式
@@ -145,7 +150,7 @@ public class NettyChannelDispatcher {
     }
 
     public static void dispatch(ChannelHandlerContext ctx, RpcRequest msg) {
-        group.submit(new Runnable() {
+        operationExecutorService.submit(new Runnable() {
             @Override
             public void run() {
                 try {

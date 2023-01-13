@@ -181,6 +181,7 @@ public class IdWorker {
 
         /**
          * 由于 时间戳 跟 序列号 都是递增，所以序列号总会保持最大值
+         * reason：清理工作应该 由后台来完成，不与 业务线程 串行 影响 业务执行效率
          */
         timeStampMaxSequenceMap.put(timestamp, sequence);
         // 当并发严重致保存时间戳超过阈值时，考虑垃圾清理

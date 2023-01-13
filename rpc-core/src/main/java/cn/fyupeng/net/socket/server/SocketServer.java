@@ -3,7 +3,7 @@ package cn.fyupeng.net.socket.server;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.factory.ThreadPoolFactory;
 import cn.fyupeng.handler.RequestHandler;
-import cn.fyupeng.hook.ShutdownHook;
+import cn.fyupeng.hook.ServerShutdownHook;
 import cn.fyupeng.net.AbstractRpcServer;
 import cn.fyupeng.provider.DefaultServiceProvider;
 import cn.fyupeng.registry.NacosServiceRegistry;
@@ -63,7 +63,7 @@ public class SocketServer extends AbstractRpcServer {
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(port)){
             log.info("Server is running...");
-            ShutdownHook.getShutdownHook().addClearAllHook();
+            ServerShutdownHook.getShutdownHook().addClearAllHook();
             Socket socket;
             // 监听 客户端连接
             while ((socket = serverSocket.accept()) != null) {

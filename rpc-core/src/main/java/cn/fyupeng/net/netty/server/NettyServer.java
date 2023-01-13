@@ -3,7 +3,7 @@ package cn.fyupeng.net.netty.server;
 import cn.fyupeng.codec.CommonDecoder;
 import cn.fyupeng.codec.CommonEncoder;
 import cn.fyupeng.exception.RpcException;
-import cn.fyupeng.hook.ShutdownHook;
+import cn.fyupeng.hook.ServerShutdownHook;
 import cn.fyupeng.idworker.utils.LRedisHelper;
 import cn.fyupeng.net.AbstractRpcServer;
 import cn.fyupeng.provider.ServiceProvider;
@@ -11,7 +11,6 @@ import cn.fyupeng.registry.ServiceRegistry;
 import cn.fyupeng.serializer.CommonSerializer;
 import cn.fyupeng.util.IpUtils;
 import cn.fyupeng.util.PropertiesConstants;
-import com.alibaba.nacos.common.utils.StringUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -25,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.MissingResourceException;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
@@ -49,6 +47,14 @@ public class NettyServer extends AbstractRpcServer {
      * 或者 公网 主机名
      */
     private final CommonSerializer serializer;
+
+    /**
+     * Netty 服务端 连接监听 和 业务 事件循环组
+     * 考虑到 一个进程中 只创建一个 NettyServer 为了共享 EventLoopGroup 和 优雅 善后处理 使用 static final 修饰
+     * final 只是 引用 对象的地址 不可变，内容 成员还是可以变的
+     */
+    private static final EventLoopGroup bossGroup = new NioEventLoopGroup();
+    private static final EventLoopGroup workerGroup = new NioEventLoopGroup();
 
     private static String redisServerWay = "";
 
@@ -124,9 +130,7 @@ public class NettyServer extends AbstractRpcServer {
          *  封装了 之前 使用的 线程吃 和 任务队列
          *  实现了 ExecutorService 接口
          */
-        ShutdownHook.getShutdownHook().addClearAllHook();
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        ServerShutdownHook.getShutdownHook().addClearAllHook();
 
         try {
             /**
@@ -157,11 +161,41 @@ public class NettyServer extends AbstractRpcServer {
 
         } catch (Exception e) {
             log.error("Error occurred while starting server! {}",e);
-            e.printStackTrace();
         } finally {
+            // 如果服务器 直接通过 关闭 来断开 finally 及 后面的代码将 无法执行，搬迁 到 关闭钩子 优雅关闭
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
+        // 无法执行
+    }
+
+    public static void shutdownAll() {
+        log.info("close all EventLoopGroup now ...");
+        try {
+            bossGroup.shutdownGracefully().sync();
+            log.info("close Netty Server Boss EventLoopGroup [{}] [{}]", bossGroup.getClass(), bossGroup.isTerminated());
+        } catch (InterruptedException e) {
+            log.error("close thread was interrupted: ", e);
+        }
+        try {
+            workerGroup.shutdownGracefully().sync();
+            log.info("close Netty Server Worker EventLoopGroup [{}] [{}]", workerGroup.getClass(), bossGroup.isTerminated());
+        } catch (InterruptedException e) {
+            log.error("close thread was interrupted: ", e);
+        }
+        try {
+            bossGroup.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error("failed to close Netty Server Boss EventLoopGroup: ", e);
+            bossGroup.shutdownNow();
+        }
+        try {
+            workerGroup.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error("failed to close Netty Server Boss EventLoopGroup: ", e);
+            workerGroup.shutdownNow();
+        }
+        log.info("Netty Server EventLoopGroup closed successfully");
     }
 
 }

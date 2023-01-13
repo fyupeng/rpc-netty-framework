@@ -1,6 +1,6 @@
 ## 介绍
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.9&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.10&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
@@ -9,6 +9,7 @@
 一个分布式微服务RPC框架 | [英文说明文档](README.md) | [SpringBoot整合RPC](springboot整合rpc-netty-framework.md)
 
 - [x] 基于`Socket`和`Netty`异步非阻塞通信的解决方案；
+- [x] 适用基于`Netty`的`IO`密集型场景应用，性能虽不如`CPU`密集型场景应用，但并发性是最好的；
 - [x] 支持分布式超时重试机制、幂等历史结果淘汰策略、异步缓存实现高效通信；
 - [x] 实现采用`Jedis/Lettuce`两种基于雪花算法的`id`生成器;
 - [x] 支持`JDK`内置`SPI`机制，实现接口与实现解耦；
@@ -17,13 +18,14 @@
 - [ ] 提供集群注册中心宕机重启服务；
 - [x] 提供服务无限制横向扩展；
 - [x] 提供服务的两种负载均衡策略，如随机和轮询负载；
-- [ ] 提供请求超时重试，且保障业务执行的幂等性，超时重试能降低线程池任务的延迟，线程池保障了高并发场景下线程数创建数量的稳定，却因而带来延迟问题，处理该问题可以启用重试请求，且重试达到阈值将放弃请求，认为该服务暂时不可用，造成业务损耗，请慎用；
-- [ ] 提供自定义注解扩展服务，使用代理扩展，能无侵入式扩展个性化服务；
+- [x] 提供请求超时重试，且保障业务执行的幂等性，超时重试能降低线程池任务的延迟，线程池保障了高并发场景下线程数创建数量的稳定，却因而带来延迟问题，处理该问题可以启用重试请求，且重试达到阈值将放弃请求，认为该服务暂时不可用，造成业务损耗，请慎用；
+- [x] 提供自定义注解扩展服务，使用代理扩展，能无侵入式扩展个性化服务；
 - [x] 提供可扩展的序列化服务，目前提供`Kryo`和`Jackson`两种序列化方式；
 - [x] 提供日志框架`Logback`；
 - [x] 提供Netty可扩展的通信协议，通信协议头使用与Class一样的16位魔数`0xCAFEBABE`、包辨识id，用来辨识请求包和响应包、`res`长度，用来防止粘包，以及最后的`res`，内部加入检验码和唯一识别id，让服务器能高效地同时处理多个不同请求包或重发请求包，以及包校验；
 - [ ] 支持秒级时钟回拨服务端采取主动屏蔽客户端请求策略、分级以上时钟回拨服务端采取主动下线策略；
 - [x] 配合超时重试机制对劫持包采用沉默和重发处理，加强通信的安全性。
+- [x] 支持服务端单向延时关闭处理请求。
 
 架构图
 
@@ -43,12 +45,18 @@
 - 注册中心
 - 单机与集群
 
+---- 
+
 ### 2. 安全策略
 - 心跳机制
 - 信息摘要
 - 超时重试机制
 - 幂等性
 - 雪花算法
+- 健壮性
+
+---- 
+
 ### 3. 设计模式
 - 单例模式
 - 动态代理
@@ -56,6 +64,9 @@
 - 建造者
 - 策略模式
 - Future(观察者）
+
+---- 
+
 ## 亮点
 ### 1. 信息摘要算法的应用
 对于信息摘要算法的使用，其实并不难，在数据包中添加 `String` 类型的成员变量 `checkCode` 用来防伪的就可以实现。
@@ -73,6 +84,9 @@
 每个包都会生成唯一的 `requestId`，发出请求包后，该包只能由该请求发出的客户端所接受，就算两处有一点被对方恶意改动了，客户端都会报错并丢弃收到的响应包，不会拆包后去返回给用户。
 
 如果不是单单改动了返回结果，而是将结果跟信息摘要都修改了，对方很难保证修改的内容加密后与修改后的信息摘要一致，因为要保证一致的数据传输协议和数据编解码。
+
+---- 
+
 ### 2. 心跳机制
 
 心跳机制的 `RPC` 上应用的很广泛，本项目对心跳机制的实现很简单，而且应对措施是服务端强制断开连接，当然有些 `RPC` 框架实现了服务端去主动尝试重连。
@@ -85,6 +99,8 @@
 利用了 `Netty` 框架中的 `IdleStateEvent` 事件监听器，重写`userEventTriggered()` 方法，在服务端监听读操作，读取客户端的 写操作，在客户端监听写操作，监听本身是否还在活动，即有没有向服务端发送请求。
 
 如果客户端没有主动断开与服务端的连接，而继续保持连接着，那么客户端的写操作超时后，也就是客户端的监听器监听到客户端没有的规定时间内做出写操作事件，那么这时客户端该处理器主动发送心跳包给服务端，保证客户端让服务端确保自己保持着活性。
+
+---- 
 
 ### 3. SPI 机制
 
@@ -109,6 +125,9 @@ cn.fyupeng.provider.DefaultServiceProvider
 ```properties
 cn.fyupeng.registry.NacosServiceRegistry
 ```
+
+---- 
+
 ### 4. IO 异步非阻塞
 
 IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而且能够在请求数据返回时间段里去处理自己感兴趣的事情。
@@ -117,13 +136,16 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 
 使用 java8 出世的 `CompletableFuture` 并发工具类，能够异步处理数据，并在将来需要时获取。
 
+
 - 实现
 
 数据在服务端与客户端之间的通道 `channel` 中传输，客户端向通道发出请求包，需要等待服务端返回，这时可使用 `CompletableFuture` 作为返回结果，只需让客户端读取到数据后，将结果通过 `complete()`方法将值放进去后，在将来时通过`get()`方法获取结果。
 
-
+---- 
 
 ### 5. RNF 协议
+
+- 定义
 
 ```java
 /**
@@ -143,6 +165,39 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
      * +---------------+---------------+-----------------+-------------+
      */
 ```
+
+`RNF`协议为上层应用协议，处于应用层中，`TCP`协议为传输协议，即上层传输有`TCP`拆包成`RNF`包，下层传输为`RNF`包封装成`TCP`包。
+
+- 拆解分析
+
+```postgresql
+Frame 30759: 368 bytes on wire (2944 bits), 368 bytes captured (2944 bits) on interface \Device\NPF_Loopback, id 0
+Null/Loopback
+Internet Protocol Version 4, Src: 192.168.2.185, Dst: 192.168.2.185
+Transmission Control Protocol, Src Port: 53479, Dst Port: 8085, Seq: 4861, Ack: 4486, Len: 324
+RNF Protocol
+    Identifier: 0xcafebabe
+    PackType: 726571
+    SerializerCode: 2
+    Length: 308
+    Data [truncated]: C\036cn.fyupeng.protocol.RpcRequest�\trequestId\rinterfaceName\nmethodName\nreturnType\005group\theartBeat\nparameters\nparamTypes`\025230113199152359542784\fhelloService\bsayHelloC\017java.lang.Class�\004namea\036cn
+```
+
+`Identifier` (`0xcafebabe`): 表示标识，而0xCAFEBABE为java对象的对象头表示。
+
+`PackType` (`726571`, `726573`): `726571`由字符`res`的`ASCCI`码(`\u0072\u0065\u0073`)转换而来，`req`同理。  
+
+`SerializerCode` (`0,1,2`): 目前提供三种(`json,kryo,hessian2`)序列化方式，分别对应(`0,1,2`)。
+
+`Length` (`308`): 表示`Data`的长度。
+
+`Data [truncated]`(``C\036cn.fyupeng.protocol.RpcRequest...``): 表示使用`${SerializerCode}`序列化方式、长度为`${Length}`的`${PackType}`包。
+
+使用`Wireshare`本地连接抓取，并用`lua`语言编写`RNF`协议解码器，可以更直观了解包的层次结构。
+
+想了解解码器的可以从根目录直接下载，放于`Wireshark`的`lua`插件`plugins`中，重新加载插件就可以了。
+
+----  
 
 ## 快速开始
 
@@ -234,6 +289,9 @@ cn.fyupeng.redis.server-async=true
   <url>https://repo1.maven.org/maven2</url>
 </mirror>
 ```
+
+---- 
+
 ### 2. 启动 Nacos
 
 `-m:模式`，`standalone:单机`
@@ -258,12 +316,17 @@ Nacos 启动效果：
 
 ![效果](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/nacos.png)
 
+---- 
+
 ### 3. 提供接口
 ```java
 public interface HelloService {
     String sayHello(String message);
 }
 ```
+
+---- 
+
 ### 4. 启动服务
 - 真实服务
 ```java
@@ -291,6 +354,8 @@ public class MyServer {
 ```
 > 注意：增加注解`cn.fyupeng.Service`和`cn.fyupeng.ServiceScan`才可被自动发现服务扫描并注册到 nacos 
 
+---- 
+
 ### 5. 启动客户端
 初始化客户端时连接服务端有两种方式：
 - 直连
@@ -308,9 +373,9 @@ public class MyClient {
     }
 }
 ```
-### 5. 额外配置
+### 6. 额外配置
 
-#### 5.1 配置文件
+#### 6.1 配置文件
 
 - 项目方式启动
 
@@ -326,7 +391,7 @@ cn.fyupeng.nacos.register-addr=localhost:8848
 ，兼容`springboot`的外部启动配置文件注入，需要在`Jar`包同目录下新建`config`文件夹，在`config`中与`springboot`一样注入配置文件，只不过`springboot`注入的配置文件默认约束名为`application.properties`，而`rpc-netty-framework`默认约束名为`resource.properties`。
 
 
-#### 5.2 日志配置
+#### 6.2 日志配置
 
 在 `resources` 中加入 `logback.xml`
 ```xml
@@ -346,13 +411,18 @@ cn.fyupeng.nacos.register-addr=localhost:8848
 ```
 除此之外，框架还提供了 Socket 方式的 Rpc 服务
 
-### 6. 场景应用
+---- 
+
+### 7. 场景应用
 
 - 支持 springBoot 集成
 
 为了支持`springBoot`集成`logback`日志，继承`rpc-netty-framework`使用同一套日志，抛弃`nacos-client`内置的`slf4j-api`与`commons-loging`原有`Jar`包，因为该框架会导致在整合`springboot`时，出现重复的日志绑定和日志打印方法的参数兼容问题，使用`jcl-over-slf4j-api`可解决该问题；
 
 在`springboot1.0`和`2.0`版本中，不使用它默认版本的`spring-boot-starter-log4j`,推荐使用`1.3.8.RELEASE`；
+
+在场景测试下，突破万字文章的
+
 springboot简单配置如下
 ```xml
 <dependencies>
@@ -381,15 +451,23 @@ springboot简单配置如下
     </dependency>
     <!--引入log4j日志依赖，目的是使用 jcl-over-slf4j 来重写 commons logging 的实现-->
     <dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-log4j</artifactId>
-    <version>1.3.8.RELEASE</version>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-log4j</artifactId>
+      <version>1.3.8.RELEASE</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>slf4j-log4j12</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+      </exclusions>
     </dependency>
 </dependencies>
 
 ```
 
-### 7. 高可用集群
+---- 
+
+### 8. 高可用集群
 
 ```properties
 cn.fyupeng.nacos.cluster.use=true
@@ -411,7 +489,9 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 - 集群节点容错切换
   - 节点宕机：遇到节点宕机将重新从节点配置列表中选举新的正常节点，否则无限重试
 
-### 8. 超时重试机制
+---- 
+
+### 9. 超时重试机制
 
 默认不使用重试机制，为了保证服务的正确性，因为无法保证幂等性。
 
@@ -475,7 +555,9 @@ for (int i = 0; i <= retries; i++) {
 
 幂等性作用在失效时间，也影响到超时机制重试次数以及高并发场景，有雪花算法的优势，不同时间上不会生成重复id，于是可以大胆将失效时间设置大些，这取决于你能够承担多少内存而转而去考虑内存瓶颈的问题。
 
-### 9. 雪花算法
+---- 
+
+### 10. 雪花算法
 ```java
 /**
      * 自定义 分布式唯一号 id
@@ -560,7 +642,9 @@ LRedisHelper
 
 高并发请求不会出现请求号重复的情况，当前最高毫秒级并发`4096`，而超时机制、`LRedisHelper`线程池对连接的超时控制等配置参数还不成熟，具体应用场景可自行下载源码修改参数。
 
-### 10. 高并发
+---- 
+
+### 11. 高并发
 
 在`Netty`高性能框架的支持下，有单`Reactor`单线程、单`Reactor`多线程和主从`Reactor`多线程，采用性能最好的主从`Reactor`多线程，优势在于多服务结点（多`channel`情况下）并发处理时，从`workGroup`中每个线程可以处理一个`channel`，实现并行处理，不过在单个`channel`承载高并发下，无法多个线程同时处理事件，因为一个`channel`只能绑定一个线程。
 
@@ -698,7 +782,9 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
 
 当然高并发下还要考虑一个问题，任务处理太慢时，不能让客户端一直阻塞等待，可以设置超时，避免因为服务端某一个任务影响到其他请求的执行，要让出给其他有需要的线程使用，于是引入的超时机制配合分布式缓存，在超时机制下，要么直接将第一次请求后服务端缓存的结果直接返回，要么直接失败，来保证它的一个高并发稳定性。
 
-### 11. 异常解决
+---- 
+
+### 12. 异常解决
 - ServiceNotFoundException
 
 抛出异常`ServiceNotFoundException`
@@ -714,8 +800,6 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
 除非使用注解注明包名`@ServiceScan("com.fyupeng")`
 
 其他情况下，如出现服务端无反应，而且服务已经成功注册到注册中心，那么你就得检查下服务端与客户端中接口命名的包名是否一致，如不一致，也是无法被自动发现服务从注册中心发现的，这样最常见的报错也是`service instances size is zero`。
-
-
 
 - ReceiveResponseException
 
@@ -825,7 +909,80 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 内部设计采用`toSring()`方法来，而不进行某一种固定的方式来校验，这让校验有更大的不确定性，以此获得更高的传输安全，当然这种设计可以让开发人员自行设计具有安全性的`toString`方法实现，如不实现，将继承`Object`的内存地址toString打印，由于是通过网络序列化传输的，也就是深克隆方式创建类，服务端的原校验码和待校验一般不同，就会抛该异常，一般都需要重新`toString()`方法。
 
-### 12. 版本追踪
+---- 
+
+### 13. 健壮性（善后工作）
+
+服务端的延时关闭善后工作，能够保证连接的正常关闭。
+
+- TCP 关闭（四次挥手）
+
+```shell
+8191	80.172711	192.168.2.185	192.168.2.185	TCP	44	8085 → 52700 [FIN, ACK] Seq=3290 Ack=3566 Win=2616320 Len=0
+8190	80.172110	192.168.2.185	192.168.2.185	TCP	44	8085 → 52700 [ACK] Seq=3290 Ack=3566 Win=2616320 Len=0
+8191	80.172711	192.168.2.185	192.168.2.185	TCP	44	8085 → 52700 [FIN, ACK] Seq=3290 Ack=3566 Win=2616320 Len=0
+8192	80.172751	192.168.2.185	192.168.2.185	TCP	44	52700 → 8085 [ACK] Seq=3566 Ack=3291 Win=2616320 Len=0
+```
+
+而且不再出现发送`RST`问题，即接收缓冲区中还有数据未接收，出现的原因为`Netty`自身善后工作出现了问题，即在`future.channel().closeFuture().sync()`该操作执行后，线程终止不会往下执行，即时有`finally`依旧如此，于是使用关闭钩子来自动调用完成连接的正常关闭。
+
+- 关闭钩子
+
+```java
+public class ShutdownHook {
+
+    private static final ShutdownHook shutdownHook = new ClientShutdownHook();
+
+    public static ShutdownHook getShutdownHook() {
+        return shutdownHook;
+    }
+
+    /**
+     * 添加关闭钩子
+     * 客户端钩子 跟 服务端钩子分开启动添加，不要放一起
+     */
+    public void addClearAllHook() {
+        log.info("All services will be cancel after shutdown");
+        Runtime.getRuntime().addShutdownHook(new Thread(()->{
+            // 服务端，由服务端钩子执行
+            JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
+            log.info("the cache for workId has bean cleared successfully");
+            NacosUtils.clearRegistry();
+            NettyServer.shutdownAll();
+            ThreadPoolFactory.shutdownAll();
+            
+            // 客户端，由客户端钩子执行
+            ChannelProvider.shutdownAll();
+            ThreadPoolFactory.shutdownAll();
+            // 其他 善后工作
+        }));
+    }
+}
+```
+
+- 使用方法
+
+在服务端或者客户端代理启动时调用
+
+```java
+public class NettyServer extends AbstractRpcServer {
+    
+  @Override
+  public void start() {
+    /**
+     *  封装了 之前 使用的 线程吃 和 任务队列
+     *  实现了 ExecutorService 接口
+     */
+    ShutdownHook.getShutdownHook().addClearAllHook();
+  }
+}
+```
+
+Netty已经提供了优雅关闭，即`bossGroup.shutdownGracefully().sync()`，可将其用静态方法封装起来，交由钩子调用即可。
+
+---- 
+
+### 14. 版本追踪
 
 #### 1.0版本
 
@@ -857,7 +1014,11 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.0.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.6/pom) ]：整体整改和性能优化。
 
-- [ [#2.0.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.8/pom) ]: Code logic optimization and preload optimization.
+- [ [#2.0.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.8/pom) ]: 代码逻辑优化以及预加载优化。
+
+- [ [#2.0.9](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.0.9/pom) ]：修复客户端/服务端未能正常关闭问题，导致对端连接异常终止。
+
+#### 2.1版本
 
 - [ [#2.1.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.0/pom) ]：引入雪花算法与分布式缓存，`2.0.0`版本仅支持单机幂等性，修复分布式场景失效问题，采用`轮询负载+超时机制`，能高效解决服务超时问题。
 
@@ -873,9 +1034,11 @@ Output output = new Output(byteArrayOutputStream,100000))
 
 - [ [#2.1.9](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.9/pom) ]：代码逻辑优化以及预加载优化。
 
+- [ [#2.1.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.10/pom) ]：修复客户端/服务端未能正常关闭问题，导致对端连接异常终止、整合统一的业务线程池，以便后期清理工作。
 
+---- 
 
-### 13. 开发说明
+### 15. 开发说明
 有二次开发能力的，可直接对源码修改，最后在工程目录下使用命令`mvn clean package`，可将核心包和依赖包打包到`rpc-netty-framework\rpc-core\target`目录下，本项目为开源项目，如认为对本项目开发者采纳，请在开源后最后追加原创作者`GitHub`链接 https://github.com/fyupeng ，感谢配合！
 
 

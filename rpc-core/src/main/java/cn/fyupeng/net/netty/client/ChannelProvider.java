@@ -120,4 +120,21 @@ public class ChannelProvider {
         return bootstrap;
     }
 
+    public static void shutdownAll(){
+        try {
+            log.info("close client EventLoopGroup now ...");
+            group.shutdownGracefully().sync();
+            log.info("close Netty Client Boss EventLoopGroup [{}] [{}]", group.getClass(), group.isTerminated());
+        } catch (InterruptedException e) {
+            log.error("close thread was interrupted: ", e);
+        }
+        try {
+            group.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            log.error("failed to close Netty Server Boss EventLoopGroup: ", e);
+            group.shutdownNow();
+        }
+        log.info("Netty Client EventLoopGroup closed successfully");
+    }
+
 }
