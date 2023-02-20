@@ -1,10 +1,11 @@
 ## Introduction
 
-![Version](https://img.shields.io/static/v1?label=VERSION&message=2.1.10&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=Version&message=2.1.10&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
-![Nacos](https://img.shields.io/static/v1?label=NACOS&message=1.43&color=orange)
-![Netty](https://img.shields.io/static/v1?label=NETTY&message=4.1.75.Final&color=blueviolet)
-![Version](https://img.shields.io/static/v1?label=LICENCE&message=MIT&color=brightgreen)
+![Nacos](https://img.shields.io/static/v1?label=Nacos&message=1.43&color=orange)
+![Netty](https://img.shields.io/static/v1?label=Netty&message=4.1.75.Final&color=blueviolet)
+![License](https://img.shields.io/static/v1?label=License&message=Apache2&color=blue)
+
 
 A Distributed Microservice RPC Framework | [Chinese Documentation](/document/README.CN.md) | [SpringBoot conformity RPC](/document/springboot整合rpc-netty-framework.md)
 
@@ -1032,5 +1033,4 @@ Netty already provides a graceful shutdown, `bossGroup.shutdownGracefully().sync
 
 ### 15. Development Notes
 
-If you have secondary development ability, you can directly modify the source code, and finally use the command `mvn clean package` in the project directory to package the core package and dependency package to the `rpc-netty-framework\rpc-core\target` directory , this project is an open source project, if you think it will be adopted by the developers of this project, please add the original author `GitHub` link https://github.com/fyupeng after the open source, thank you for your cooperation!
-
+RNF open source RPC framework has followed Apache License Version 2.0 protocol. Please follow the above protocol before using it. If you have copyright disputes or inconvenience, please contact the author!
