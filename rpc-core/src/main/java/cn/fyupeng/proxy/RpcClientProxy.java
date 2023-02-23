@@ -1,7 +1,7 @@
 package cn.fyupeng.proxy;
 
 
-import cn.fyupeng.anotion.Reference;
+import cn.fyupeng.annotation.Reference;
 import cn.fyupeng.exception.AsyncTimeUnreasonableException;
 import cn.fyupeng.exception.RetryTimeoutException;
 import cn.fyupeng.exception.RpcTransmissionException;

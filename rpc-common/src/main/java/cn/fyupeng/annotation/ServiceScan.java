@@ -1,4 +1,4 @@
-package cn.fyupeng.anotion;
+package cn.fyupeng.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

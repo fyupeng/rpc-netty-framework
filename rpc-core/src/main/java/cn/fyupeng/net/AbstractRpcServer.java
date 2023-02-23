@@ -1,7 +1,7 @@
 package cn.fyupeng.net;
 
-import cn.fyupeng.anotion.Service;
-import cn.fyupeng.anotion.ServiceScan;
+import cn.fyupeng.annotation.Service;
+import cn.fyupeng.annotation.ServiceScan;
 import cn.fyupeng.exception.AnnotationMissingException;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.provider.ServiceProvider;
@@ -69,10 +69,12 @@ public abstract class AbstractRpcServer implements RpcServer {
          if (clazz.isAnnotationPresent(Service.class)) {
             String serviceName = clazz.getAnnotation(Service.class).name();
             String group = clazz.getAnnotation(Service.class).group();
+            System.out.println();
+            System.out.println(clazz.getName());
+            System.out.println();
             Object obj;
             try {
-               obj = clazz.newInstance();
-
+               obj = newInstance(clazz.getName(), clazz);
             }catch (InstantiationException | IllegalAccessException e) {
                log.error("An error occurred while creating the {} : {}",clazz, e);
                continue;
@@ -124,5 +126,18 @@ public abstract class AbstractRpcServer implements RpcServer {
    public <T> void publishService(T service, String groupName, String serviceName) throws RpcException {
       serviceProvider.addServiceProvider(service,  serviceName);
       serviceRegistry.register(serviceName, groupName, new InetSocketAddress(hostName, port));
+   }
+
+   /**
+    * 保留 类名，扩展 自定义 创建实例
+    * @param name clazz 对应的 类名
+    * @param clazz Class 类，可用于发射
+    * @return
+    * @throws InstantiationException
+    * @throws IllegalAccessException
+    */
+   @Override
+   public Object newInstance(String name, Class<?> clazz) throws InstantiationException, IllegalAccessException {
+      return clazz.newInstance();
    }
 }

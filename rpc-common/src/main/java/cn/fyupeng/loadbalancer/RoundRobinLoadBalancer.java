@@ -5,6 +5,7 @@ import cn.fyupeng.exception.ServiceNotFoundException;
 import com.alibaba.nacos.api.naming.pojo.Instance;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @Auther: fyp
@@ -15,15 +16,15 @@ import java.util.List;
  */
 public class RoundRobinLoadBalancer implements LoadBalancer {
 
-   private int index = 0;
+   private final AtomicLong idx = new AtomicLong();
 
    @Override
    public Instance selectService(List<Instance> instances) throws RpcException {
       if(instances.size() == 0 ) {
          throw new ServiceNotFoundException("service instances size is zero, can't provide service! please start server first!");
       }
-      index++;
-      return instances.get(index %= instances.size());
+      int num = (int) (idx.getAndIncrement() % (long) instances.size());
+      return instances.get(num < 0 ? - num : num);
    }
 
    @Override
@@ -31,8 +32,9 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
       if(nodes.length == 0) {
          throw new ServiceNotFoundException("service instances size is zero, can't provide service! please start server first!");
       }
-      index++;
-      return nodes[(index %= nodes.length)];
+      int num = (int) (idx.getAndIncrement() % (long) nodes.length);
+      return nodes[num < 0 ? - num : num];
+
    }
 
 }

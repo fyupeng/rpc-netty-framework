@@ -272,6 +272,7 @@ public class NacosUtils {
             while (iterator.hasNext()) {
                 String serviceName = iterator.next();
                 try {
+                    serviceNames.remove(serviceName);
                     namingService.deregisterInstance(serviceName, hostname,  port);
                 } catch (NacosException e) {
                     log.error("Failed to cancel service:{}, info:{}",serviceName, e);

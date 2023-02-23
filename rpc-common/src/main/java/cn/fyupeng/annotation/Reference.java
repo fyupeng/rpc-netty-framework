@@ -1,4 +1,4 @@
-package cn.fyupeng.anotion;
+package cn.fyupeng.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
  * @Auther: fyp
  * @Date: 2022/10/16
  * @Description: 客户端服务配置
- * @Package: cn.fyupeng.anotion
+ * @Package: cn.fyupeng.annotation
  * @Version: 1.0
  */
 
