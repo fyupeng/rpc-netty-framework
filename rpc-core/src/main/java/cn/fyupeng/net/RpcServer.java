@@ -17,10 +17,13 @@ public interface RpcServer {
 
     /**
      *
-     * @param name clazz 对应的 类名
+     * @param fullName 全类名
+     * @param simpleName 忽略包类名
+     * @param firstLowCaseName 首字母小写类名
      * @param clazz Class 类，可用于发射
      * @return
+     * @throws Exception
      */
-    Object newInstance(String name, Class<?> clazz) throws Exception;
+    Object newInstance(String fullName, String simpleName, String firstLowCaseName, Class<?> clazz) throws Exception;
 
 }

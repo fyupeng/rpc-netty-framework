@@ -200,7 +200,7 @@ public interface HelloService {
 ```java
 package cn.fyupeng.controller;
 
-import cn.fyupeng.anotion.Reference;
+import cn.fyupeng.annotation.Reference;
 import cn.fyupeng.loadbalancer.RandomLoadBalancer;
 import cn.fyupeng.net.netty.client.NettyClient;
 import cn.fyupeng.proxy.RpcClientProxy;
@@ -258,6 +258,7 @@ public class HelloController {
 
 新建`cn.fyupeng.config`包，在包下新建资源配置类，用于注入绑定端口
 
+- ResourceConfig 配置类
 ```java
 @Configuration
 @ConfigurationProperties(prefix="cn.fyupeng.config")
@@ -276,7 +277,66 @@ public class ResourceConfig {
 }
 ```
 
-### 3.2 编写启动器
+## 3.2 编写工具类
+
+- SpringContextUtil 工具类
+
+实现 RPC 回调 Spring 注解依赖注入和注解切面的关键。
+
+```java
+package cn.fyupeng.util;
+
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Component;
+
+/**
+ * @Auther: fyp
+ * @Date: 2023/2/23
+ * @Description: Spring容器上下文工具类
+ * @Package: cn.fyupeng.util
+ * @Version: 1.0
+ */
+@Component
+public class SpringContextUtil implements ApplicationContextAware {
+    // Spring 上下文 对象
+    private static ApplicationContext applicationContext;
+
+    /**
+     * 实现 ApplicationContextAware 接口的 回调方法，设置上下文环境
+     * @param applicationContext
+     * @throws BeansException
+     */
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        SpringContextUtil.applicationContext = applicationContext;
+    }
+
+    public static ApplicationContext getApplicationContext() {
+        return applicationContext;
+    }
+
+    /**
+     * 获取对象
+     *
+     * @param name
+     * @return Object
+     * @throws BeansException
+     */
+    public static Object getBean(String name) throws BeansException {
+        return applicationContext.getBean(name);
+    }
+
+    public static Object getBean(String name, Class cla) throws BeansException {
+        return applicationContext.getBean(name, cla);
+    }
+
+}
+
+```
+
+### 3.3 编写启动器
 
 ```java
 @Slf4j
@@ -309,7 +369,19 @@ public class RpcServerStarter implements CommandLineRunner {
         while(true){
             NettyServer nettyServer = null;
             try {
-                nettyServer = new NettyServer(resourceConfig.getServerIp(), resourceConfig.getServerPort(), SerializerCode.KRYO.getCode());
+                // 2.2.0 以下版本
+                //nettyServer = new NettyServer(resourceConfig.getServerIp(), resourceConfig.getServerPort(), SerializerCode.KRYO.getCode());
+                // 2.2.0 及以上版本支持
+                /**
+                 * 实现将 容器对象 放到 自管理容器中
+                 */
+                nettyServer = new NettyServer(resourceConfig.getServerIp(), resourceConfig.getServerPort(), SerializerCode.HESSIAN.getCode()) {
+
+                    @Override
+                    public Object newInstance(String fullName, String simpleName, String firstLowCaseName, Class<?> clazz) throws InstantiationException, IllegalAccessException {
+                        return SpringContextUtil.getBean(firstLowCaseName, clazz);
+                    }
+                };
             } catch (RpcException e) {
                 e.printStackTrace();
             }
@@ -323,7 +395,7 @@ public class RpcServerStarter implements CommandLineRunner {
 
 ```
 
-### 3.3 编写配置文件
+### 3.4 编写配置文件
 
 注意`config/resource.properties`与资源目录下的`resource.properties`不能同时公用，前者优先级高于后者
 
@@ -345,7 +417,7 @@ cn.fyupeng.nacos.cluster.nodes=192.168.2.185:8847|192.168.2.185:8848;192.168.2.1
 spring.main.web-application-type=none
 spring.main.allow-bean-definition-overriding=true
 ```
-### 3.4 编写api
+### 3.5 编写api
 
 注意与客户端包名完全相同
 
@@ -364,7 +436,7 @@ public interface HelloService {
 }
 ```
 
-### 3.5 编写业务
+### 3.6 编写业务
 
 注意`Service`注解为`cn.fyupeng.service.HelloService`
 
@@ -372,7 +444,7 @@ public interface HelloService {
 package cn.fyupeng.service.impl;
 
 
-import cn.fyupeng.anotion.Service;
+import cn.fyupeng.annotation.Service;
 import cn.fyupeng.service.HelloService;
 
 /**

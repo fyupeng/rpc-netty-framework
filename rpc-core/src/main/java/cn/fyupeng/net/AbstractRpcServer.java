@@ -69,12 +69,11 @@ public abstract class AbstractRpcServer implements RpcServer {
          if (clazz.isAnnotationPresent(Service.class)) {
             String serviceName = clazz.getAnnotation(Service.class).name();
             String group = clazz.getAnnotation(Service.class).group();
-            System.out.println();
-            System.out.println(clazz.getName());
-            System.out.println();
             Object obj;
+            String simpleName = clazz.getSimpleName();
+            String firstLowCaseName = simpleName.substring(0, 1).toLowerCase() + simpleName.substring(1);
             try {
-               obj = newInstance(clazz.getName(), clazz);
+               obj = newInstance(clazz.getName(), clazz.getSimpleName(), firstLowCaseName, clazz);
             }catch (InstantiationException | IllegalAccessException e) {
                log.error("An error occurred while creating the {} : {}",clazz, e);
                continue;
@@ -130,14 +129,16 @@ public abstract class AbstractRpcServer implements RpcServer {
 
    /**
     * 保留 类名，扩展 自定义 创建实例
-    * @param name clazz 对应的 类名
+    * @param fullName 全类名
+    * @param simpleName 忽略包类名
+    * @param firstLowCaseName 首字母小写类名
     * @param clazz Class 类，可用于发射
     * @return
     * @throws InstantiationException
     * @throws IllegalAccessException
     */
    @Override
-   public Object newInstance(String name, Class<?> clazz) throws InstantiationException, IllegalAccessException {
+   public Object newInstance(String fullName, String simpleName, String firstLowCaseName, Class<?> clazz) throws InstantiationException, IllegalAccessException {
       return clazz.newInstance();
    }
 }

@@ -1,6 +1,6 @@
 ## 介绍
 
-![Version](https://img.shields.io/static/v1?label=Version&message=2.1.10&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=Version&message=2.2.0&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=Nacos&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=Netty&message=4.1.75.Final&color=blueviolet)
@@ -26,6 +26,7 @@
 - [ ] 支持秒级时钟回拨服务端采取主动屏蔽客户端请求策略、分级以上时钟回拨服务端采取主动下线策略；
 - [x] 配合超时重试机制对劫持包采用沉默和重发处理，加强通信的安全性。
 - [x] 支持服务端单向延时关闭处理请求。
+- [x] 支持扩展`Bean`自定义实例化，满足第三方框架如`Spring`依赖注入、切面执行。
 
 架构图
 
@@ -219,7 +220,7 @@ RNF Protocol
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>2.0.8</version>
+    <version>2.2.0</version>
 </dependency>
 ```
 
@@ -271,12 +272,12 @@ cn.fyupeng.redis.server-async=true
 ```
 支持注解`@Reference`，用于解决超时重试场景。
 
-推荐使用最新版本`2.1.7`，`2.0`版本引入分布式缓存，解决了分布式场景出现的一些问题。
+推荐使用最新版本`2.1.10`，`2.0`版本引入分布式缓存，解决了分布式场景出现的一些问题。
 ```xml
 <dependency>
   <groupId>cn.fyupeng</groupId
   <artifactId>rpc-core</artifactId>
-  <version>2.1.9</version>
+  <version>2.1.10</version>
 </dependency>
 ```
 
@@ -352,7 +353,9 @@ public class MyServer {
     }
 }
 ```
-> 注意：增加注解`cn.fyupeng.Service`和`cn.fyupeng.ServiceScan`才可被自动发现服务扫描并注册到 nacos 
+> 注意：<br/>
+> 1. 增加注解`cn.fyupeng.annotation.Service`和`cn.fyupeng.annotation.ServiceScan`才可被自动发现服务扫描并注册到 nacos。<br/>
+> 2. 自管理容器默认采用反射创建方式，会导致Spring注解依赖注入和切面失效，解决方案请移步 [SpringBoot整合RPC](/document/springboot整合rpc-netty-framework.md)
 
 ---- 
 
@@ -499,7 +502,7 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 
 超时重试处理会导致出现幂等性问题，因此在服务器中利用`HashSet`添加请求`id`来做超时处理
 
-- 超时重试：`cn.fyupeng.anotion.Reference`注解提供重试次数、超时时间和异步时间三个配置参数，其中：
+- 超时重试：`cn.fyupeng.annotation.Reference`注解提供重试次数、超时时间和异步时间三个配置参数，其中：
   - 重试次数：服务端未能在超时时间内 响应，允许触发超时的次数
   - 超时时间：即客户端最长允许等待 服务端时长，超时即触发重试机制
   - 异步时间：即等待服务端异步响应的时间，且只能在超时重试机制使用，非超时重试情况下默认使用阻塞等待方式
@@ -1035,6 +1038,11 @@ Netty已经提供了优雅关闭，即`bossGroup.shutdownGracefully().sync()`，
 - [ [#2.1.9](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.9/pom) ]：代码逻辑优化以及预加载优化。
 
 - [ [#2.1.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.10/pom) ]：修复客户端/服务端未能正常关闭问题，导致对端连接异常终止、整合统一的业务线程池，以便后期清理工作。
+
+#### 2.1版本
+
+- [ [#2.2.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.0/pom) ]：支持 扩展 `Bean` 自定义实例化，满足 `Spring` 注解依赖注入和注解切面执行需求、修正注解包名为`annotation`、解决服务注销时未能手动清除服务实例内存、性能小幅度提升、维护并发下轮询策略的不稳定性。
+
 
 ---- 
 

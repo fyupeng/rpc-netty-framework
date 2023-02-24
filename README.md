@@ -1,6 +1,6 @@
 ## Introduction
 
-![Version](https://img.shields.io/static/v1?label=Version&message=2.1.10&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=Version&message=2.2.0&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=Nacos&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=Netty&message=4.1.75.Final&color=blueviolet)
@@ -27,6 +27,7 @@ A Distributed Microservice RPC Framework | [Chinese Documentation](/document/REA
 - [ ] Support second-level clock callback server to take the initiative to block the client request strategy, more than minutes-level clock callback server to take the initiative offline strategy.
 - [x] In conjunction with the timeout retry mechanism, silence and retransmission of hijacked packets are adopted to enhance the security of communication.
 - [x] Supports one-way delay shutdown processing requests on the server side.
+- [x] supports extension' Bean' custom instantiation to meet third-party frameworks such as' Spring' dependency injection and tangent execution.
 
 Architecture Diagram
 
@@ -350,8 +351,9 @@ public class MyServer {
     }
 }
 ```
-> Note: Add the annotations `cn.fyupeng.Service` and `cn.fyupeng.ServiceScan` to be scanned by the automatic discovery service and registered to nacos
-
+> Note:<br/>
+> 1. add annotations' cn.fyupeng.annotation.Service' and' cn.fyupeng.annotation.ServiceScan' to be scanned by the automatic discovery service and registered to nacos. <br/>
+> 2. the self-management container uses reflection creation by default, which will cause Spring annotation dependency injection and tangent failure. for the solution, please move to [SpringBoot integration RPC](/document/springboot integration rpc-netty-framework.md)
 ---- 
 
 ### 5. Start Client
@@ -491,7 +493,7 @@ The retry mechanism is not used by default, in order to ensure the correctness o
 The reason is that the client cannot detect whether there is a problem in the client's network transmission or a problem in the server's network transmission on the way back after receiving correctly, because if the former is the case, then retrying can guarantee idempotency, but if the latter is the case, it may lead to multiple executions of the same service, which is a non-consistent result for the client.
 
 Timeout retry processing can lead to idempotency problem, so we use `HashSet` to add request `id` to do timeout processing in the server:
-- Timeout retry: `cn.fyupeng.anotion.Reference` annotation provides three configuration parameters: retry count, timeout time and asynchronous time, where
+- Timeout retry: `cn.fyupeng.annotation.Reference` annotation provides three configuration parameters: retry count, timeout time and asynchronous time, where
 - Number of retries: the number of times the server fails to respond within the timeout period and is allowed to trigger a timeout
 - Timeout time: the maximum time allowed for the client to wait for the server, and the timeout triggers the retry mechanism
 - Asynchronous time: the time to wait for the asynchronous response from the server, and can only be used in the timeout retry mechanism, the default use of non-timeout retry blocking wait mode
@@ -1028,6 +1030,10 @@ Netty already provides a graceful shutdown, `bossGroup.shutdownGracefully().sync
 - [ [#2.1.9](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.9/pom) ]: Code logic optimization and preload optimization.
 
 - [ [#2.1.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.10/pom) ]: Repair the client/server failed to normally closed questions, lead to end connection abort, Consolidate a unified pool of business threads for later cleanup.
+
+#### 2.1 version
+
+- [ [#2.2.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.0/pom) ]: supports the extension of 'Bean' custom instantiation, meets the requirements of 'Spring' annotation dependency injection and annotation section execution, corrects the annotation package name 'annotation', solves the failure to manually clear the memory of the service instance when the service is logged out, improves the performance slightly, and maintains the instability of the polling policy under concurrency.
 
 ---- 
 
