@@ -63,17 +63,24 @@ public class SocketServer extends AbstractRpcServer {
     public void start() {
         try (ServerSocket serverSocket = new ServerSocket(port)){
             log.info("Server is running...");
-            ServerShutdownHook.getShutdownHook().addClearAllHook();
+            ServerShutdownHook.getShutdownHook()
+                    .addServer(this)
+                    .addRegistry(serviceRegistry)
+                    .addClearAllHook();
             Socket socket;
             // 监听 客户端连接
             while ((socket = serverSocket.accept()) != null) {
                 log.info("customer has connected successfully! ip = " + socket.getInetAddress());
                 threadPool.execute(new SocketRequestHandlerThread(socket, requestHandler, serializer));
             }
-            threadPool.shutdown();
         } catch (IOException e) {
             log.error("Exception throws when connecting, info: {}", e);
         }
+    }
+
+    @Override
+    public void shutdown() {
+        threadPool.shutdown();
     }
 
 }

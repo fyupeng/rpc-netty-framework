@@ -13,7 +13,7 @@ import java.util.List;
  * @Version: 1.0
  */
 public interface LoadBalancer {
-   Instance selectService(List<Instance> instances) throws RpcException;
+   <T> T selectService(List<T> services) throws RpcException;
 
    String selectNode(String[] nodes) throws RpcException;
 

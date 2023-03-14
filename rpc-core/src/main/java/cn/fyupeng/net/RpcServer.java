@@ -20,10 +20,12 @@ public interface RpcServer {
      * @param fullName 全类名
      * @param simpleName 忽略包类名
      * @param firstLowCaseName 首字母小写类名
-     * @param clazz Class 类，可用于发射
+     * @param clazz Class 类，可用于反射
      * @return
      * @throws Exception
      */
     Object newInstance(String fullName, String simpleName, String firstLowCaseName, Class<?> clazz) throws Exception;
+
+    void shutdown();
 
 }

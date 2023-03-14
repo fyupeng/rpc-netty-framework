@@ -1,8 +1,10 @@
-package cn.fyupeng.util;
+package cn.fyupeng.config;
 
 import cn.fyupeng.enums.LoadBalancerCode;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.loadbalancer.LoadBalancer;
+import cn.fyupeng.util.IpUtils;
+import cn.fyupeng.util.PropertiesConstants;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.naming.NamingFactory;
 import com.alibaba.nacos.api.naming.NamingService;
@@ -22,13 +24,15 @@ import java.util.*;
  * @Version: 1.0
  */
 @Slf4j
-public class NacosUtils {
+public class NacosConfiguration implements Configuration {
 
     private static final Set<String> serviceNames = new HashSet<>();
     private static LoadBalancer loadBalancer;
     private static String SERVER_ADDR = "127.0.0.1:8848";
     private static NamingService namingService;
     private static InetSocketAddress inetSocketAddress;
+    // 增加 容灾切换
+    private static String[] nodes = null;
 
 
     //2. 加载配置文件，只需加载一次
@@ -39,7 +43,7 @@ public class NacosUtils {
         // 使用InPutStream流读取properties文件
         String currentWorkPath = System.getProperty("user.dir");
         InputStream is = null;
-        String[] nodes = null;
+        //String[] nodes = null;
         PropertyResourceBundle configResource = null;
         String useCluster = "";
         String balancer = "round";
@@ -179,7 +183,7 @@ public class NacosUtils {
 
             }
             // 初始化 Nacos 注册中心服务接口
-            namingService = getNacosNamingService();
+            namingService = getNacosNamingService(null);
         } while (namingService.getServerStatus() == "DOWN");
         if (namingService.getServerStatus() == "UP")
             log.info("Register center bind with address {}", node);
@@ -196,18 +200,14 @@ public class NacosUtils {
             log.error("Service occupy Internal Errors");
     }
 
-    public static void init() {
-        log.debug("nacos Services has initialize successfully!");
-    }
-
-
     /**
      * 获取绑定的 Nacos 服务
      * @return Nacos 服务
+     * 服务注册到 注册中心 后，由注册中心集群 做 服务同步
      */
-    public static NamingService getNacosNamingService() {
+    private static NamingService getNacosNamingService(String newAddress) {
         try {
-            return NamingFactory.createNamingService(SERVER_ADDR);
+            return NamingFactory.createNamingService(newAddress != null ? newAddress: SERVER_ADDR);
         } catch (NacosException e) {
             log.error("error occurred when connecting to nacos server: ", e);
             return null;
@@ -215,23 +215,47 @@ public class NacosUtils {
     }
 
     /**
-     * 获取配置中心中与服务名匹配的所有实例，可以通过使用负载均衡选择其中一个实例
+     * 获取注册中心中与服务名匹配的所有实例，可以通过使用负载均衡选择其中一个实例
+     * 注册中心自动容灾切换
      * @param serviceName 服务名
      * @return 实例列表
      * @throws NacosException
      */
-    public static List<Instance> getAllInstance(String serviceName) throws  NacosException {
+    public static List<Instance> getAllInstance(String serviceName) throws RpcException, NacosException {
+        if (nodes.length != 1 && namingService.getServerStatus() == "DOWN") {
+            String node = loadBalancer.selectNode(nodes);
+            log.info("disaster recovery switch occurred in registration center[{}]", SERVER_ADDR);
+            namingService = getNacosNamingService(node);
+            if (namingService.getServerStatus() == "UP") {
+                SERVER_ADDR = node;
+                log.info("The registry node switches to {}", SERVER_ADDR);
+                return namingService.getAllInstances(serviceName);
+            }
+            log.warn("naocs server [{}] is unavalable", nodes);
+        }
         return namingService.getAllInstances(serviceName);
     }
 
     /**
-     * 获取配置中心中与服务名匹配的所有实例，可以通过使用负载均衡选择其中一个实例
+     * 获取注册中心中与服务名匹配的所有实例，可以通过使用负载均衡选择其中一个实例
+     * 注册中心自动容灾切换
      * @param serviceName 服务名
      * @param groupName 组名
      * @return 实例列表
      * @throws NacosException
      */
-    public static List<Instance> getAllInstance(String serviceName, String groupName) throws  NacosException {
+    public static List<Instance> getAllInstance(String serviceName, String groupName) throws NacosException, RpcException {
+        if (nodes.length != 1 && namingService.getServerStatus() == "DOWN") {
+            String node = loadBalancer.selectNode(nodes);
+            log.info("disaster recovery switch occurred in registration center[{}]", SERVER_ADDR);
+            namingService = getNacosNamingService(node);
+            if (namingService.getServerStatus() == "UP") {
+                SERVER_ADDR = node;
+                log.info("The registry node switches to {}", SERVER_ADDR);
+                return namingService.getAllInstances(serviceName, groupName);
+            }
+            log.warn("naocs server [{}] is unavalable", nodes);
+        }
         return namingService.getAllInstances(serviceName, groupName);
     }
 

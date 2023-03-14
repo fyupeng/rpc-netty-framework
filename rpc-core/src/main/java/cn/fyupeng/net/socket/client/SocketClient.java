@@ -8,7 +8,6 @@ import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.serializer.CommonSerializer;
 import cn.fyupeng.util.ObjectReader;
 import cn.fyupeng.util.ObjectWriter;
-import cn.fyupeng.util.RpcMessageChecker;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -61,6 +60,11 @@ public class SocketClient implements RpcClient {
             log.error("Error occurred while invoking badly,info: {}", e);
             return null;
         }
+    }
+
+    @Override
+    public void shutdown() {
+
     }
 }
 

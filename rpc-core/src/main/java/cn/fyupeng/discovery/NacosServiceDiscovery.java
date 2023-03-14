@@ -1,11 +1,11 @@
 package cn.fyupeng.discovery;
 
+import cn.fyupeng.config.NacosConfiguration;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.naming.pojo.Instance;
 import cn.fyupeng.exception.ObtainServiceException;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.loadbalancer.LoadBalancer;
-import cn.fyupeng.util.NacosUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
@@ -44,7 +44,7 @@ public class NacosServiceDiscovery extends ServiceDiscovery {
     @Override
     public InetSocketAddress lookupService(String serviceName) throws RpcException {
         try {
-            List<Instance> instances = NacosUtils.getAllInstance(serviceName);
+            List<Instance> instances = NacosConfiguration.getAllInstance(serviceName);
             Instance instance = loadBalancer.selectService(instances);
             log.debug("lookupService: ip [{}], port [{}]",instance.getIp(), instance.getPort());
             return new InetSocketAddress(instance.getIp(), instance.getPort());
@@ -67,15 +67,15 @@ public class NacosServiceDiscovery extends ServiceDiscovery {
     @Override
     public InetSocketAddress lookupService(String serviceName, String groupName) throws RpcException {
         try {
-            List<Instance> instances = NacosUtils.getAllInstance(serviceName, groupName);
+            List<Instance> instances = NacosConfiguration.getAllInstance(serviceName, groupName);
             Instance instance = loadBalancer.selectService(instances);
             log.debug("lookupService: ip [{}], port [{}]",instance.getIp(), instance.getPort());
             return new InetSocketAddress(instance.getIp(), instance.getPort());
         } catch (NacosException e) {
-            log.error("error occurred while fetching the service:{}",e.getMessage());
+            log.error("error occurred while fetching the service: \n{}",e.getMessage());
             throw new ObtainServiceException("error occurred while fetching the service Exception");
         } catch (RpcException e) {
-            log.error("service instances size is zero, can't provide service! please start server first! Exception: {}",e.getMessage());
+            log.error("service instances size is zero, can't provide service! please start server first! Exception: \n{}",e.getMessage());
             throw e;
         }
     }

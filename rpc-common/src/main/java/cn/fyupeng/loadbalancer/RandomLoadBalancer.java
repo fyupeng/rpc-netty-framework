@@ -17,11 +17,11 @@ import java.util.Random;
 public class RandomLoadBalancer implements LoadBalancer{
 
     @Override
-    public Instance selectService(List<Instance> instances) throws RpcException {
-        if(instances.size() == 0 ) {
+    public <T> T selectService(List<T> services) throws RpcException {
+        if(services.size() == 0 ) {
             throw new ServiceNotFoundException("service instances size is zero, can't provide service! please start server first!");
         }
-        return instances.get(new Random().nextInt(instances.size()));
+        return services.get(new Random().nextInt(services.size()));
     }
 
     @Override

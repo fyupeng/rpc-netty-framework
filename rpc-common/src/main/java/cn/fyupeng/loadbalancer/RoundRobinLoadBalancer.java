@@ -19,12 +19,12 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
    private final AtomicLong idx = new AtomicLong();
 
    @Override
-   public Instance selectService(List<Instance> instances) throws RpcException {
-      if(instances.size() == 0 ) {
+   public <T> T selectService(List<T> services) throws RpcException {
+      if(services.size() == 0 ) {
          throw new ServiceNotFoundException("service instances size is zero, can't provide service! please start server first!");
       }
-      int num = (int) (idx.getAndIncrement() % (long) instances.size());
-      return instances.get(num < 0 ? - num : num);
+      int num = (int) (idx.getAndIncrement() % (long) services.size());
+      return services.get(num < 0 ? - num : num);
    }
 
    @Override
@@ -34,7 +34,5 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
       }
       int num = (int) (idx.getAndIncrement() % (long) nodes.length);
       return nodes[num < 0 ? - num : num];
-
    }
-
 }

@@ -2,9 +2,8 @@ package cn.fyupeng.service;
 
 import cn.fyupeng.HelloWorldService;
 import cn.fyupeng.pojo.BlogJSONResult;
-import cn.fyupeng.anotion.Service;
+import cn.fyupeng.annotation.Service;
 
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -20,7 +19,11 @@ public class HelloWorldServiceImpl implements HelloWorldService {
     @Override
     public BlogJSONResult sayHello(String message) {
         try {
-            Thread.sleep(new Random().nextInt(500));
+            //int taskTime = new Random().nextInt(50);
+            int taskTime = 50;
+            Thread.sleep(taskTime);
+            System.out.println("任务时间： " + taskTime);
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

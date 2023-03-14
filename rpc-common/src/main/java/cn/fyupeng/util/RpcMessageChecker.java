@@ -21,8 +21,6 @@ import java.io.UnsupportedEncodingException;
 @Slf4j
 public class RpcMessageChecker {
 
-    private static final String INTERFACE_NAME = "interfaceName";
-
     public RpcMessageChecker() {
     }
 

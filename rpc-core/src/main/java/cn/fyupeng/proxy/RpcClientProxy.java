@@ -2,6 +2,7 @@ package cn.fyupeng.proxy;
 
 
 import cn.fyupeng.annotation.Reference;
+import cn.fyupeng.config.Configuration;
 import cn.fyupeng.exception.AsyncTimeUnreasonableException;
 import cn.fyupeng.exception.RetryTimeoutException;
 import cn.fyupeng.exception.RpcTransmissionException;
@@ -14,7 +15,6 @@ import cn.fyupeng.net.netty.client.UnprocessedRequests;
 import cn.fyupeng.net.socket.client.SocketClient;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
-import cn.fyupeng.util.NacosUtils;
 import cn.fyupeng.util.RpcMessageChecker;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,6 +22,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -61,9 +62,10 @@ public class RpcClientProxy implements InvocationHandler {
 
    static {
       /**
-       * 预加载
+       * 使用 SPI 机制进行预加载
+       * 解决 静态代码块 无法兼容多态扩展的方式
        */
-      NacosUtils.init();
+      ServiceLoader.load(Configuration.class).iterator().next();
    }
 
    /**
@@ -71,10 +73,6 @@ public class RpcClientProxy implements InvocationHandler {
     */
    public RpcClientProxy(RpcClient rpcClient) {
       this.rpcClient = rpcClient;
-      /**
-       * 客户端 清除钩子
-       */
-      ClientShutdownHook.getShutdownHook().addClearAllHook();
    }
 
 

@@ -3,6 +3,7 @@ package cn.fyupeng.net.netty.client;
 import cn.fyupeng.discovery.ServiceDiscovery;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.factory.SingleFactory;
+import cn.fyupeng.hook.ClientShutdownHook;
 import cn.fyupeng.loadbalancer.LoadBalancer;
 import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.protocol.RpcRequest;
@@ -71,6 +72,12 @@ public class NettyClient implements RpcClient {
          * fix bug
          */
         unprocessedRequests = SingleFactory.getInstance(UnprocessedRequests.class);
+        /**
+         * 客户端 清除钩子
+         */
+        ClientShutdownHook.getShutdownHook()
+                .addClient(this)
+                .addClearAllHook();
     }
 
     /**
@@ -113,7 +120,7 @@ public class NettyClient implements RpcClient {
             this.hostName = address.getHostName();
             this.port = address.getPort();
         }
-        Channel channel = ChannelProvider.get(new InetSocketAddress(hostName, port), serializer);
+        Channel channel = NettyChannelProvider.get(new InetSocketAddress(hostName, port), serializer);
         /**
          * 拿到 channel 之后 如果 出现 异常 已经在 ChannelProvider中 get channel 已经处理了，用户会得到 异常通知
          */
@@ -166,6 +173,11 @@ public class NettyClient implements RpcClient {
         //System.out.println(resultFuture);
 
         return resultFuture;
+    }
+
+    @Override
+    public void shutdown() {
+        NettyChannelProvider.shutdownAll();
     }
 
 }

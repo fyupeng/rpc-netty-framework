@@ -12,4 +12,6 @@ import cn.fyupeng.protocol.RpcRequest;
  */
 public interface RpcClient {
     Object sendRequest(RpcRequest rpcRequest) throws RpcException;
+
+    void shutdown();
 }

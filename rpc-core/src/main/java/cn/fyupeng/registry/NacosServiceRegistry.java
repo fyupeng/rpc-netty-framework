@@ -1,9 +1,9 @@
 package cn.fyupeng.registry;
 
+import cn.fyupeng.config.NacosConfiguration;
 import com.alibaba.nacos.api.exception.NacosException;
 import cn.fyupeng.exception.RegisterFailedException;
 import cn.fyupeng.exception.RpcException;
-import cn.fyupeng.util.NacosUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
@@ -27,7 +27,7 @@ public class NacosServiceRegistry implements ServiceRegistry {
    @Override
    public void register(String serviceName, InetSocketAddress inetSocketAddress) throws RpcException {
       try {
-         NacosUtils.registerService(serviceName, inetSocketAddress);
+         NacosConfiguration.registerService(serviceName, inetSocketAddress);
       } catch (NacosException e) {
          log.error("Failed to register service", e.getMessage());
          throw new RegisterFailedException("Failed to register service Exception");
@@ -44,11 +44,18 @@ public class NacosServiceRegistry implements ServiceRegistry {
    @Override
    public void register(String serviceName, String groupName, InetSocketAddress inetSocketAddress) throws RpcException {
       try {
-         NacosUtils.registerService(serviceName, groupName, inetSocketAddress);
+         NacosConfiguration.registerService(serviceName, groupName, inetSocketAddress);
       } catch (NacosException e) {
          log.error("Failed to register service", e.getMessage());
          throw new RegisterFailedException("Failed to register service Exception");
       }
+   }
+
+   /**
+    * 服务关闭时自动调用，只需要实现该功能即可
+    */
+   public void clearRegistry() {
+      NacosConfiguration.clearRegistry();
    }
 
 }

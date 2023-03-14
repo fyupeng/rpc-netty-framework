@@ -13,8 +13,6 @@ import com.alibaba.nacos.common.utils.StringUtils;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.concurrent.DefaultEventExecutorGroup;
-import io.netty.util.concurrent.EventExecutorGroup;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -281,6 +279,10 @@ public class NettyChannelDispatcher {
                 }
             }
         });
+    }
+
+    public static void shutdownAll() {
+        ThreadPoolFactory.shutdownAll();
     }
 
 }

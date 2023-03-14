@@ -25,7 +25,7 @@ import java.util.concurrent.*;
  * @Version: 1.0
  */
 @Slf4j
-public class ChannelProvider {
+public class  NettyChannelProvider {
 
     private static EventLoopGroup group;
     private static Bootstrap bootstrap = initBootstrap();
@@ -120,8 +120,14 @@ public class ChannelProvider {
         return bootstrap;
     }
 
+    /**
+     *
+     */
     public static void shutdownAll(){
         try {
+            log.info("clear all channels between NettyClient to NettyServer now...");
+            channels.clear();
+            log.info("All channels between NettyClient to NettyServer clear successfully");
             log.info("close client EventLoopGroup now ...");
             group.shutdownGracefully().sync();
             log.info("close Netty Client Boss EventLoopGroup [{}] [{}]", group.getClass(), group.isTerminated());

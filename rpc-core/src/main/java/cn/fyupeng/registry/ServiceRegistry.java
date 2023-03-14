@@ -16,4 +16,7 @@ public interface ServiceRegistry {
     void register(String serviceName, InetSocketAddress inetSocketAddress) throws RpcException;
 
     void register(String serviceName, String groupName, InetSocketAddress inetSocketAddress) throws RpcException;
+
+    void clearRegistry();
+
 }

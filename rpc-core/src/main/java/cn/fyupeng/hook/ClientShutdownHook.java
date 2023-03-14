@@ -1,11 +1,6 @@
 package cn.fyupeng.hook;
 
-import cn.fyupeng.factory.ThreadPoolFactory;
-import cn.fyupeng.idworker.utils.JRedisHelper;
-import cn.fyupeng.net.netty.client.ChannelProvider;
-import cn.fyupeng.net.netty.server.NettyServer;
-import cn.fyupeng.util.IpUtils;
-import cn.fyupeng.util.NacosUtils;
+import cn.fyupeng.net.RpcClient;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -20,9 +15,15 @@ import lombok.extern.slf4j.Slf4j;
 public class ClientShutdownHook {
 
     private static final ClientShutdownHook shutdownHook = new ClientShutdownHook();
+    private RpcClient rpcClient;
 
     public static ClientShutdownHook getShutdownHook() {
         return shutdownHook;
+    }
+
+    public ClientShutdownHook addClient(RpcClient rpcClient) {
+        this.rpcClient = rpcClient;
+        return this;
     }
 
     /**
@@ -31,8 +32,10 @@ public class ClientShutdownHook {
     public void addClearAllHook() {
         log.info("All services will be cancel after shutdown");
         Runtime.getRuntime().addShutdownHook(new Thread(()->{
-            ChannelProvider.shutdownAll();
-            ThreadPoolFactory.shutdownAll();
+            //NettyChannelProvider.shutdownAll();
+            if(rpcClient != null) {
+                rpcClient.shutdown();
+            }
         }));
     }
 }

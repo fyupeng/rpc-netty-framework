@@ -11,7 +11,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.MissingResourceException;
-import java.util.Properties;
 import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 
@@ -32,7 +31,6 @@ public class JRedisHelper {
     private static final String retryReqIds = "retry-req-ids";
     private static Jedis jedis;
     private final static String DEFAULT_ADDRESS = "127.0.0.1:6379";
-
 
     //2. 加载配置文件，只需加载一次
     static {

@@ -1,6 +1,6 @@
 package cn.fyupeng;
 
-import cn.fyupeng.anotion.ServiceScan;
+import cn.fyupeng.annotation.ServiceScan;
 import cn.fyupeng.enums.SerializerCode;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.net.netty.server.NettyServer;
@@ -16,7 +16,7 @@ import cn.fyupeng.net.netty.server.NettyServer;
 public class Server {
     public static void main(String[] args) {
         try {
-            NettyServer nettyServer = new NettyServer("192.168.10.1", 8081, SerializerCode.KRYO.getCode());
+            NettyServer nettyServer = new NettyServer("192.168.10.1", 8083, SerializerCode.HESSIAN.getCode());
             nettyServer.start();
         } catch (RpcException e) {
             e.printStackTrace();

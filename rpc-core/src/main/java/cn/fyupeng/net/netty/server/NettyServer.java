@@ -3,6 +3,7 @@ package cn.fyupeng.net.netty.server;
 import cn.fyupeng.codec.CommonDecoder;
 import cn.fyupeng.codec.CommonEncoder;
 import cn.fyupeng.exception.RpcException;
+import cn.fyupeng.factory.ThreadPoolFactory;
 import cn.fyupeng.hook.ServerShutdownHook;
 import cn.fyupeng.idworker.utils.LRedisHelper;
 import cn.fyupeng.net.AbstractRpcServer;
@@ -131,12 +132,16 @@ public class NettyServer extends AbstractRpcServer {
          *  封装了 之前 使用的 线程吃 和 任务队列
          *  实现了 ExecutorService 接口
          */
-        ServerShutdownHook.getShutdownHook().addClearAllHook();
+        ServerShutdownHook.getShutdownHook()
+                .addServer(this)
+                .addRegistry(serviceRegistry)
+                .addClearAllHook();
 
         try {
             /**
              *  启动服务
              */
+            // 栈上分配资源
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -160,7 +165,6 @@ public class NettyServer extends AbstractRpcServer {
                     });
             ChannelFuture future = serverBootstrap.bind(port).sync();
             future.channel().closeFuture().sync();
-
         } catch (Exception e) {
             log.error("Error occurred while starting server! {}",e);
         } finally {
@@ -171,6 +175,22 @@ public class NettyServer extends AbstractRpcServer {
         // 无法执行
     }
 
+    @Override
+    public void shutdown() {
+        shutdownAll();
+        shutdownNettyChannelDispatcher();
+    }
+
+    /**
+     * 关闭线程池的使用，由 NettyServer 的处理器 NettyServerHandler 业务模块 NettyChannelDispatcher 使用
+     */
+    public static void shutdownNettyChannelDispatcher() {
+        NettyChannelDispatcher.shutdownAll();
+    }
+
+    /**
+     * 结束生命周期 交给 关闭钩子
+     */
     public static void shutdownAll() {
         log.info("close all EventLoopGroup now ...");
         try {

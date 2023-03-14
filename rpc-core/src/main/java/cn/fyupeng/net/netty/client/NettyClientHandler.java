@@ -70,7 +70,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
             // 客户端 没有发送 数据了，设置 写超时总会被 触发，从而 发送心跳包 给 服务端
             if (state == IdleState.WRITER_IDLE) {
                 log.debug("Send heartbeat packets to server[{}]", ctx.channel().remoteAddress());
-                ChannelProvider.get((InetSocketAddress) ctx.channel().remoteAddress(), CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER));
+                NettyChannelProvider.get((InetSocketAddress) ctx.channel().remoteAddress(), CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER));
                 RpcRequest rpcRequest = new RpcRequest();
                 rpcRequest.setHeartBeat(true);
                 ctx.writeAndFlush(rpcRequest).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);

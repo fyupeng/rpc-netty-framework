@@ -1,12 +1,9 @@
 package cn.fyupeng.idworker;
 
-import cn.fyupeng.factory.ThreadPoolFactory;
-import cn.fyupeng.idworker.exception.InvalidSystemClockException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
-import java.util.concurrent.*;
 
 public class IdWorker {
     /**
@@ -59,8 +56,7 @@ public class IdWorker {
     protected long sequenceMask = -1L ^ (-1L << sequenceBits);
 
     /**
-     * 上一次系统时间 时间戳
-     * 用于 判断系统 是否发生 时钟回拨 异常
+     * 上一次系统时间 生成 id 的时间戳
      */
     protected long lastMillis = -1L;
     /**
@@ -73,32 +69,39 @@ public class IdWorker {
      */
     protected long sequence = 0L;
     /**
-     * 最近时间阈值
+     *  当前 系统时间 已经 不在时间回拨内
+     *
+     *      ↓ ${timestamp}        ↓ ${lastMillis} 、 ${lockBackTimestamp}
+     * 111111111111111111111111111100000000000000000000000000000000000000
+     * ---------------------------------------------------------------------------- (时间线 0-未使用, 1-已使用)
+     *                               | |
+     *                               | |
+     *                              _| |__
+     *                              \   /
+     *                               \ /
+     *
+     *      ↓ ${lockBackTimestamp}        ↓ ${timestamp}      ↓ ${lastMillis}
+     * 111111111111111111111111111111111111111111111111111111110000000000000000000
+     * ---------------------------------------------------------------------------- (时间线 0-未使用, 1-已使用)
      */
-    protected long thresholdMills = 500L;
-
     /**
-     * 最近时间缓存时间戳大小阈值
+     * 是否 处于 时间回拨
+     * 处于 时间回拨 lastMillis 不再更新
      */
-    protected long thresholdSize = 3000;
-
+    protected boolean isLockBack = false;
     /**
-     * 时间戳 - 序列号 id
+     * 是否 首次发生 时间回拨
      */
-    private ConcurrentHashMap<Long, Long> timeStampMaxSequenceMap = new ConcurrentHashMap<>();
-
+    protected boolean isFirstLockBack = true;
     /**
-     * 自定义 最近时间保存 时间戳 清理启用的线程池
+     * 发生 时间回拨 那一刻 时间戳
      */
-    private ExecutorService timeStampClearExecutorService = ThreadPoolFactory.createDefaultThreadPool("timestamp-clear-pool");
-
+    protected long lockBackTimestamp;
 
     protected Logger logger = LoggerFactory.getLogger(IdWorker.class);
 
     public IdWorker(long workerId) {
         this.workerId = checkWorkerId(workerId);
-
-        logger.debug("worker starting. timestamp left shift {}, worker id {}", timestampLeftShift, workerId);
     }
 
     public long getEpoch() {
@@ -118,89 +121,60 @@ public class IdWorker {
 
     public synchronized long nextId() {
         long timestamp = millisGen();
-        // 解决时钟回拨问题（低并发场景）
-        if (timestamp < lastMillis) {
-            // 可以去 获取 之前该 时间戳 最大的序列号
-            // 并发还没有到最大值，可以对序列号递增
-            /**
-             * 当前回拨后 没有之前 时间戳生成 id，且可阻塞时间不超过 500 ms
-             * 1、保证最坏情况 不阻塞超过 500ms
-             * 2、否则 抛出异常，不再阻塞，因为超时该时间大概率会导致超时
-             */
-            Long clockBackMaxSequence;
-            long diff = lastMillis - timestamp;
-
-            if (diff > 1000L) {
-                logger.warn("clock is moving backwards more then 1000ms");
-                logger.error("clock is moving backwards.  Rejecting requests until {}.", lastMillis);
-                throw new InvalidSystemClockException(String.format(
-                        "Clock moved backwards.  Refusing to generate id for {} milliseconds", lastMillis - timestamp));
-            } else if (diff > 500L) {
-                logger.warn("clock is moving backwards more than 500ms");
-                long blockMillis = lastMillis - 500L;
-                // 阻塞到 500 ms 内，因为 500ms内 保留能获取到最大序列号的 时间戳
-                timestamp = tilNextMillis(blockMillis);
-                clockBackMaxSequence = timeStampMaxSequenceMap.get(timestamp);
-
-                if (clockBackMaxSequence != null && clockBackMaxSequence < sequenceMask) {
-                    sequence = clockBackMaxSequence + 1;
-                    // 继续维护 该时间戳的最大 序列号
-                    timeStampMaxSequenceMap.put(timestamp, sequence);
-                } else {
-                    logger.error("clock is moving backwards.  Rejecting requests until {}.", lastMillis);
-                    throw new InvalidSystemClockException(String.format(
-                            "Clock moved backwards.  Refusing to generate id for {} milliseconds", lastMillis - timestamp));
-                }
-                // 恢复 发生时钟回拨的 状态
-            } else {
-                logger.info("clock is moving backwards less than 500ms");
-                clockBackMaxSequence = timeStampMaxSequenceMap.get(timestamp);
-
-                if (clockBackMaxSequence != null && clockBackMaxSequence < sequenceMask) {
-                    sequence = clockBackMaxSequence + 1;
-                    // 继续维护 该时间戳的最大 序列号
-                    timeStampMaxSequenceMap.put(timestamp, sequence);
-                    // 时间回拨 小于 500ms，恢复回拨前时间戳 + 1ms，序列号 id
-                } else {
-                    timestamp = tilNextMillis(lastMillis);
-                    sequence = 0;
-                }
-            }
-
+        // 上次判定 仍处于 回拨时间内 并且 当前时间系统时间 已经 恢复到 上一次 生成 id 时间戳
+        //logger.info("timestamp " + timestamp + " lastMillis " + lastMillis);
+        if (isLockBack && timestamp > lastMillis) {
+            logger.info(">> Clock dial back to normal <<");
+            isFirstLockBack = true;
+            isLockBack = false;
         }
-        // 毫秒并发
-        if (lastMillis == timestamp) {
+
+        // 发生 时间回拨
+        if (timestamp < lastMillis) {
+            /**
+             * 逻辑 恢复 上一个生成 id 时间戳，当成 时钟回拨 没发生
+             * 1. 回拨前 时间戳 大于 上一个 系统时间 生成 id 时间戳
+             * 2. 回拨前 时间戳 等于 上一个 系统时间 生成 id 时间戳
+              */
+            timestamp = lastMillis;
+            // 判定 当前仍在 回拨时间内
+            isLockBack = true;
+            // 首次发生 回拨
+            if (isFirstLockBack) {
+                logger.warn(">> Clock callback occurs when the ID is generated <<");
+                // 记录 当前回拨的时间戳（只会在首次记录）
+                lockBackTimestamp = lastMillis;
+                // 已经发生回拨了
+                isFirstLockBack = false;
+            }
+        }
+        // 当前时间戳 与 上一个 时间戳 在同一毫秒 或 发生时间回拨 逻辑恢复
+        if (timestamp == lastMillis) {
             sequence = (sequence + 1) & sequenceMask;
             // 序列号已经最大了，需要阻塞新的时间戳
             // 表示这一毫秒并发量已达上限，新的请求会阻塞到新的时间戳中去
             if (sequence == 0)
-                timestamp = tilNextMillis(lastMillis);
+                // 发生时间回拨 不能去 阻塞， 因为使用到了当前时间
+                if (isLockBack) {
+                    // 直接让 上一毫秒 + 1， 产生新的 序列号
+                    timestamp = ++lastMillis;
+                } else {
+                    timestamp = tilNextMillis(lastMillis);
+                }
+        // 当前毫秒 大于 上一个毫秒，更新 序列号
         } else {
-            sequence = 0;
+            sequence = 0; // 竞争不激烈时，id 都是偶数
+            // 竞争不激烈时 每毫米 刚开始序列号 id 分布均匀
+            //sequence = timestamp & 1; // 0 或者 1
         }
 
-        /**
-         * 由于 时间戳 跟 序列号 都是递增，所以序列号总会保持最大值
-         * reason：清理工作应该 由后台来完成，不与 业务线程 串行 影响 业务执行效率
-         */
-        timeStampMaxSequenceMap.put(timestamp, sequence);
-        // 当并发严重致保存时间戳超过阈值时，考虑垃圾清理
-        if (timeStampMaxSequenceMap.size() > thresholdSize){
-            timeStampClearExecutorService.execute(() -> {
-                // 遍历清除 timeStamp 比 最近时间阈值 更前的时间戳
-                timeStampMaxSequenceMap.keySet().stream().forEach(entryTimeStamp -> {
-                    if (lastMillis - entryTimeStamp > thresholdMills) {
-                        timeStampMaxSequenceMap.remove(entryTimeStamp);
-                    }
-                });
-            });
-        }
-        if (timestamp > lastMillis) {
-            // 保存 上一次时间戳
-            lastMillis = timestamp;
-        }
+        // 前面如果 发生时间回拨 会恢复（逻辑上，系统时间还是没有恢复）发生回拨时的 时间戳
+
+        //正常状态 保存 上一次时间戳
+        if (!isLockBack) lastMillis = timestamp;
 
         long diff = timestamp - getEpoch();
+
         return (diff << timestampLeftShift) |
                 (workerId << workerIdShift) |
                 sequence;
