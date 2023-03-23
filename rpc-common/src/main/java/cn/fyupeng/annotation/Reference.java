@@ -36,6 +36,14 @@ public @interface Reference {
     * @return
     */
    public int retries() default 2;
+   /**
+    * 重试让出时间，默认为 1 秒
+    * 单位为 秒
+    * 只在超时重试机制使用，非超时重试情况下默认使用 阻塞等待方式（giveTime 字段 缺省 或者 <= 0 将启用）
+    * 使用前须知： ${giveTime} > 0
+    * @return
+    */
+   public int giveTime() default 1;
 
    /**
     * 超时时间，即 客户端最长允许等待 服务端时长，超时即触发重试机制

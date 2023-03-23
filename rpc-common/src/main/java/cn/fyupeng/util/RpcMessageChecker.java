@@ -5,7 +5,6 @@ import cn.fyupeng.exception.ReceiveResponseException;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
-import jdk.nashorn.internal.ir.ReturnNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -33,7 +32,6 @@ public class RpcMessageChecker {
      * @throws RpcException
      */
     public static boolean check(RpcRequest rpcRequest, RpcResponse rpcResponse) throws RpcException {
-
         if (rpcResponse == null) {
             log.error("service call failed, service: {}",rpcRequest.getInterfaceName());
             return false;
@@ -110,7 +108,6 @@ public class RpcMessageChecker {
      * @throws RpcException
      */
     public static void checkAndThrow(RpcRequest rpcRequest, RpcResponse rpcResponse) throws RpcException {
-
         if (rpcResponse == null) {
             log.error("service call failed, service: {}",rpcRequest.getInterfaceName());
             throw new ReceiveResponseException("service call failed Exception");

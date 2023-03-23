@@ -3,7 +3,6 @@ package cn.fyupeng.net.netty.client;
 import cn.fyupeng.discovery.ServiceDiscovery;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.factory.SingleFactory;
-import cn.fyupeng.hook.ClientShutdownHook;
 import cn.fyupeng.loadbalancer.LoadBalancer;
 import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.protocol.RpcRequest;
@@ -40,7 +39,11 @@ public class NettyClient implements RpcClient {
     private int port;
     private ServiceDiscovery serviceDiscovery;
 
-    private static UnprocessedRequests unprocessedRequests;
+    private static final UnprocessedResults unprocessedRequests;
+
+    static {
+        unprocessedRequests = SingleFactory.getInstance(UnprocessedResults.class);
+    }
 
     /**
      * 采用直连模式
@@ -52,7 +55,6 @@ public class NettyClient implements RpcClient {
         this.hostName = hostName;
         this.port = port;
         serializer = CommonSerializer.getByCode(serializerCode);
-        unprocessedRequests = SingleFactory.getInstance(UnprocessedRequests.class);
     }
 
     /**
@@ -68,16 +70,6 @@ public class NettyClient implements RpcClient {
         serviceDiscovery = ServiceLoader.load(ServiceDiscovery.class).iterator().next();
         serviceDiscovery.setLoadBalancer(loadBalancer);
         serializer = CommonSerializer.getByCode(serializerCode);
-        /**
-         * fix bug
-         */
-        unprocessedRequests = SingleFactory.getInstance(UnprocessedRequests.class);
-        /**
-         * 客户端 清除钩子
-         */
-        ClientShutdownHook.getShutdownHook()
-                .addClient(this)
-                .addClearAllHook();
     }
 
     /**
@@ -138,11 +130,11 @@ public class NettyClient implements RpcClient {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if (future.isSuccess()) {
-                    log.info(String.format("customer sent message: %s", rpcRequest.toString()));
+                    log.debug(String.format("customer completes sending message: %s", rpcRequest.toString()));
                 } else {
                     future.channel().close();
                     resultFuture.completeExceptionally(future.cause());
-                    log.error("Error occurred while sending message: {}",future.cause());
+                    log.error("Error occurred while sending message: ",future.cause());
                 }
             }
         });

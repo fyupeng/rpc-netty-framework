@@ -1,4 +1,4 @@
-package cn.fyupeng.util;
+package cn.fyupeng.constant;
 
 /**
  * @Auther: fyp

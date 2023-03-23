@@ -26,6 +26,10 @@ public class RpcRequest implements Serializable {
     private Class<?>[] paramTypes;
     // 调用方法的 返回值类型
     private Class<?> returnType;
+    /**
+     * 重发标志位 默认为 false 表示非 重发包
+     */
+    private Boolean reSend = false;
 
     private String group;
 
@@ -54,6 +58,7 @@ public class RpcRequest implements Serializable {
         this.paramTypes = builder.paramTypes;
         this.returnType = builder.returnType;
         this.heartBeat = builder.heartBeat;
+        this.reSend = builder.reSend;
     }
 
     public static final class Builder {
@@ -65,6 +70,7 @@ public class RpcRequest implements Serializable {
         private Class<?>[] paramTypes;
         private Class<?> returnType;
         private Boolean heartBeat;
+        private Boolean reSend;
 
         public Builder requestId(String requestId) {
             this.requestId = requestId;
@@ -98,6 +104,11 @@ public class RpcRequest implements Serializable {
 
         public Builder heartBeat(Boolean heartBeat) {
             this.heartBeat = heartBeat;
+            return this;
+        }
+
+        public Builder reSend(Boolean reSend) {
+            this.reSend = reSend;
             return this;
         }
 
@@ -155,6 +166,14 @@ public class RpcRequest implements Serializable {
         this.heartBeat = heartBeat;
     }
 
+    public Boolean getReSend() {
+        return reSend;
+    }
+
+    public void setReSend(Boolean reSend) {
+        this.reSend = reSend;
+    }
+
     @Override
     public String toString() {
         return "RpcRequest{" +
@@ -163,6 +182,8 @@ public class RpcRequest implements Serializable {
                 ", methodName='" + methodName + '\'' +
                 ", parameters=" + Arrays.toString(parameters) +
                 ", paramTypes=" + Arrays.toString(paramTypes) +
+                ", returnType=" + returnType +
+                ", reSend=" + reSend +
                 ", group='" + group + '\'' +
                 ", heartBeat=" + heartBeat +
                 '}';

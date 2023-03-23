@@ -1,7 +1,6 @@
 package cn.fyupeng.hook;
 
-
-import cn.fyupeng.idworker.utils.JRedisHelper;
+import cn.fyupeng.config.AbstractRedisConfiguration;
 import cn.fyupeng.net.RpcServer;
 import cn.fyupeng.registry.ServiceRegistry;
 import cn.fyupeng.util.IpUtils;
@@ -41,7 +40,8 @@ public class ServerShutdownHook {
     public void addClearAllHook() {
         log.info("All services will be cancel after shutdown");
         Runtime.getRuntime().addShutdownHook(new Thread(()->{
-            JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
+            AbstractRedisConfiguration redisServerConfig = AbstractRedisConfiguration.getServerConfig();
+            redisServerConfig.remWorkerId(IpUtils.getPubIpAddr());
             log.info("the cache for workId has bean cleared successfully");
             //NacosUtils.clearRegistry();
             if (serviceRegistry != null) {

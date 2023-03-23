@@ -38,7 +38,7 @@ public class RequestHandler {
        try {
            Object service = serviceProvider.getServiceProvider(rpcRequest.getInterfaceName());
            result = invokeTargetMethod(rpcRequest, service);
-            log.info("Service: {} has invoked method: {} ", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
+            log.info("Service: {} completed the method [{}] call", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
            long end = System.currentTimeMillis();
            log.info("==> Task execution takes {} ms", (end - begin));
        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException | RpcException e) {

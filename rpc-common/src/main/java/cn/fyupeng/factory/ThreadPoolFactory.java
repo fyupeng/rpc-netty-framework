@@ -21,28 +21,52 @@ public class ThreadPoolFactory {
      * BLOCKING_QUEUE_CAPACITY ： 阻塞 队列 容量
      * KEEP_ALIVE_TIMEOUT ： 心跳（单位：每分钟）
      */
-    // CPU 密集型 推荐 核心线程
-    //private static final int CORE_POOL_SIZE = Runtime.getRuntime().availableProcessors();
 
-    // IO 密集型 推荐 核心线程
-    private static final int CORE_POOL_SIZE = 20;
+    private static final int FIXED_CORE_POOL_SIZE = 200;
+    private static final int FIXED_MAXIMUM_POOL_SIZE = 200;
+    private static final int FIXED_KEEP_ALIVE_TIMEOUT = 0;
 
-    private static final int MAXIMUM_POOL_SIZE = 100;
-    private static final int BLOCKING_QUEUE_CAPACITY = 400;
-    private static final int KEEP_ALIVE_TIMEOUT = 1;
+    private static final int CACHE_CORE_POOL_SIZE = 0;
+    private static final int CACHE_MAXIMUM_POOL_SIZE = 2147483647;
+    private static final int CACHE_KEEP_ALIVE_TIMEOUT = 60000;
+
+    public static final int FIXED_THREAD_POOL = 0;
+    public static final int DEFAULT_THREAD_POOL = 1;
+    public static final int CACHE_THREAD_POOL = 2;
 
     private static Map<String, ExecutorService> threadPoolsMap = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
-        ExecutorService test = createDefaultThreadPool("test", null);
+        ExecutorService test = createDefaultThreadPool("test");
         System.out.println(test);
     }
 
     public static ExecutorService createDefaultThreadPool(String threadNamePrefix) {
-        return createDefaultThreadPool(threadNamePrefix, false);
+        return createFixedThreadPool(threadNamePrefix, 0, false);
     }
 
-    public static ExecutorService createDefaultThreadPool(String threadNamePrefix, Boolean daemon) {
+    /**
+     * @param schema DEFAULT_THREAD_POOL、FIXED_THREAD_POOL、CACHE_THREAD_POOL
+     * @param threadNamePrefix 线程池命名，用于线程池的复用
+     * @param queues 是否为守护线程
+     * @return
+     */
+    public static ExecutorService createThreadPool(int schema, String threadNamePrefix, int queues) {
+        return createThreadPool0(schema, threadNamePrefix, queues, false);
+    }
+
+    /**
+     * @param schema DEFAULT_THREAD_POOL、FIXED_THREAD_POOL、CACHE_THREAD_POOL
+     * @param threadNamePrefix 线程池命名，用于线程池的复用
+     * @param queues 任务队列长度，根据长度选型，小于 0 为 链队列，等于0 为无容量队列，大于0 为
+     * @param daemon 是否为守护线程
+     * @return
+     */
+    public static ExecutorService createThreadPool(int schema, String threadNamePrefix, int queues, boolean daemon) {
+        return createThreadPool0(schema, threadNamePrefix, queues, daemon);
+    }
+
+    private static ExecutorService createThreadPool0(int schema, String threadNamePrefix, int queues, Boolean daemon) {
         /**
          * 第一次有效，下次 返回 首次值, 参数 2 支持 函数编程
          * @FunctionalInterface
@@ -53,13 +77,42 @@ public class ThreadPoolFactory {
          *  因为 Function<? super K, ? extends V> K 对应了 T , V 对应了 R
          *  而 public interface Map<K, V> {
          */
-        ExecutorService pool = threadPoolsMap.computeIfAbsent(threadNamePrefix, k -> createThreadPool(threadNamePrefix, daemon));
-        if (pool.isShutdown() || pool.isTerminated()) {
+        ExecutorService pool = null;
+        switch (schema) {
+            case DEFAULT_THREAD_POOL :
+            case FIXED_THREAD_POOL: {
+                pool = threadPoolsMap.computeIfAbsent(threadNamePrefix, k -> createFixedThreadPool(threadNamePrefix, queues, daemon));
+                break;
+            }
+            case CACHE_THREAD_POOL: {
+                pool = threadPoolsMap.computeIfAbsent(threadNamePrefix, k -> createCacheThreadPool(threadNamePrefix, queues, daemon));
+                break;
+            }
+        }
+        if (pool != null && (pool.isShutdown() || pool.isTerminated())) {
             threadPoolsMap.remove(threadNamePrefix);
-            pool = createThreadPool(threadNamePrefix, daemon);
+            if (schema == FIXED_THREAD_POOL) {
+                pool = createFixedThreadPool(threadNamePrefix, queues, daemon);
+            } else if (schema == CACHE_THREAD_POOL) {
+                pool = createCacheThreadPool(threadNamePrefix, queues, daemon);
+            } else {
+                pool = createFixedThreadPool(threadNamePrefix, queues, daemon);
+            }
             threadPoolsMap.put(threadNamePrefix, pool);
         }
         return pool;
+    }
+
+    private static ExecutorService createFixedThreadPool(String threadNamePrefix, int queues, boolean daemon) {
+        BlockingQueue workQueue = queues == 0 ? new SynchronousQueue() : (queues < 0 ? new LinkedBlockingQueue() : new LinkedBlockingQueue(queues));
+        ThreadFactory threadFactory = createThreadFactory(threadNamePrefix, daemon);
+        return new ThreadPoolExecutor(FIXED_CORE_POOL_SIZE, FIXED_MAXIMUM_POOL_SIZE, FIXED_KEEP_ALIVE_TIMEOUT, TimeUnit.MILLISECONDS, workQueue, threadFactory);
+    }
+
+    private static ExecutorService createCacheThreadPool(String threadNamePrefix, int queues, boolean daemon) {
+        BlockingQueue workQueue = queues == 0 ? new SynchronousQueue() : (queues < 0 ? new LinkedBlockingQueue() : new LinkedBlockingQueue(queues));
+        ThreadFactory threadFactory = createThreadFactory(threadNamePrefix, daemon);
+        return new ThreadPoolExecutor(CACHE_CORE_POOL_SIZE, CACHE_MAXIMUM_POOL_SIZE, CACHE_KEEP_ALIVE_TIMEOUT, TimeUnit.MILLISECONDS, workQueue, threadFactory);
     }
 
     public static void shutdownAll() {
@@ -79,18 +132,6 @@ public class ThreadPoolFactory {
             }
         });
         log.info("threadPool closed successfully");
-    }
-
-    /**
-     * 创建 线程池，线程名前缀为 null 时 创建 默认线程工厂,daemon 为 null 时 不设置 守护线程 属性
-     * @param threadNamePrefix 线程名 前缀
-     * @param daemon 指定 是否为 守护 线程
-     * @return ExecutorService
-     */
-    private static ExecutorService createThreadPool(String threadNamePrefix, Boolean daemon) {
-        BlockingQueue<Runnable> workQueue = new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
-        ThreadFactory threadFactory = createThreadFactory(threadNamePrefix, daemon);
-        return new ThreadPoolExecutor(CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE_TIMEOUT, TimeUnit.MINUTES, workQueue, threadFactory);
     }
 
     /**

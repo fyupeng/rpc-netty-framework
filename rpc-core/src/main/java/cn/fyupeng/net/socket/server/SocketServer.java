@@ -47,7 +47,7 @@ public class SocketServer extends AbstractRpcServer {
         */
         this.hostName = host;
         this.port = port;
-        threadPool = ThreadPoolFactory.createDefaultThreadPool("socket-rpc-server");
+        threadPool = ThreadPoolFactory.createThreadPool(ThreadPoolFactory.CACHE_THREAD_POOL, "socket-rpc-server", 0);
         /**
          * 继承了 抽象类 AbstractRpcServer 需要 在子类 中 赋值 父类的 字段，才可 注册服务到 服务提供者 和 发布服务到 nacos
          * 即可 调用 父类 的 publishService() 将 服务注册到 macos 上

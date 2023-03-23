@@ -2,16 +2,14 @@ package cn.fyupeng.net.netty.server;
 
 import cn.fyupeng.codec.CommonDecoder;
 import cn.fyupeng.codec.CommonEncoder;
+import cn.fyupeng.config.AbstractRedisConfiguration;
 import cn.fyupeng.exception.RpcException;
-import cn.fyupeng.factory.ThreadPoolFactory;
 import cn.fyupeng.hook.ServerShutdownHook;
-import cn.fyupeng.idworker.utils.LRedisHelper;
 import cn.fyupeng.net.AbstractRpcServer;
 import cn.fyupeng.provider.ServiceProvider;
 import cn.fyupeng.registry.ServiceRegistry;
 import cn.fyupeng.serializer.CommonSerializer;
 import cn.fyupeng.util.IpUtils;
-import cn.fyupeng.util.PropertiesConstants;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
@@ -22,13 +20,6 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.MissingResourceException;
-import java.util.PropertyResourceBundle;
-import java.util.ResourceBundle;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 
@@ -64,38 +55,7 @@ public class NettyServer extends AbstractRpcServer {
      * 服务器启动时 优先做一些预加载
      */
     static {
-        // 使用InPutStream流读取properties文件
-        String currentWorkPath = System.getProperty("user.dir");
-        PropertyResourceBundle configResource = null;
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(currentWorkPath + "/config/resource.properties"));) {
-
-            configResource = new PropertyResourceBundle(bufferedReader);
-            redisServerWay = configResource.getString(PropertiesConstants.REDIS_SERVER_WAY);
-
-            if ("lettuce".equals(redisServerWay)) {
-                LRedisHelper.preLoad();
-            }
-
-        } catch (MissingResourceException redisServerWayException) {
-            log.warn("redis client way attribute is missing");
-            log.info("use default redis client default way: jedis");
-            redisServerWay = "jedis";
-        } catch (IOException ioException) {
-            log.info("not found resource from resource path: {}", currentWorkPath + "/config/resource.properties");
-            try {
-                ResourceBundle resource = ResourceBundle.getBundle("resource");
-                redisServerWay = resource.getString(PropertiesConstants.REDIS_SERVER_WAY);
-                if ("lettuce".equals(redisServerWay)) {
-                    LRedisHelper.preLoad();
-                }
-
-            } catch (MissingResourceException resourceException) {
-                log.info("not found resource from resource path: {}", "resource.properties");
-                log.info("use default redis client way: jedis");
-                redisServerWay = "jedis";
-            }
-            log.info("read resource from resource path: {}", "resource.properties");
-        }
+        AbstractRedisConfiguration.getServerConfig();
         /**
          * 其他 预加载选项
          */
@@ -147,9 +107,9 @@ public class NettyServer extends AbstractRpcServer {
                     .channel(NioServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.INFO))
                     .option(ChannelOption.SO_BACKLOG, 256)
-                    .option(ChannelOption.SO_KEEPALIVE, true)
+                    .childOption(ChannelOption.SO_KEEPALIVE, true)
                     .childOption(ChannelOption.TCP_NODELAY, true)
-                    .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)//缓冲池
+                    .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT.DEFAULT)//缓冲池
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {

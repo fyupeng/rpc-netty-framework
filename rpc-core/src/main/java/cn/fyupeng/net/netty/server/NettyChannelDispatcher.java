@@ -1,18 +1,16 @@
 package cn.fyupeng.net.netty.server;
 
+import cn.fyupeng.config.AbstractRedisConfiguration;
 import cn.fyupeng.factory.ThreadPoolFactory;
 import cn.fyupeng.handler.RequestHandler;
-import cn.fyupeng.idworker.utils.JRedisHelper;
-import cn.fyupeng.idworker.utils.LRedisHelper;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.serializer.CommonSerializer;
 import cn.fyupeng.util.JsonUtils;
-import cn.fyupeng.util.PropertiesConstants;
+import cn.fyupeng.constant.PropertiesConstants;
 import com.alibaba.nacos.common.utils.StringUtils;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -22,6 +20,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @Auther: fyp
@@ -33,24 +32,15 @@ import java.util.concurrent.ExecutorService;
 @Slf4j
 public class NettyChannelDispatcher {
 
-    /**
-     * netty 服务端采用 线程池处理耗时任务
-     * 抛弃 - 减少内存 开销，除了 Netty 内部必要的 事件线程组，其他线程的生命周期都由 ThreadPoolFactory 来管理
-
-    private static final EventExecutorGroup executorGroup = new DefaultEventExecutorGroup(16);
-    */
-    private static ExecutorService operationExecutorService = ThreadPoolFactory.createDefaultThreadPool("operation-executor-pool");
-
+    private static ExecutorService operationExecutorService = ThreadPoolFactory.createThreadPool(ThreadPoolFactory.CACHE_THREAD_POOL, "operation-executor-pool", 0);
     /**
      * Lettuce 分布式缓存采用 HESSIAN 序列化方式
      */
     private static CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER);
-
     /**
      * 请求处理器
      */
     private static RequestHandler requestHandler;
-
     /**
      * redisServerWay: 超时重试 Redis 服务端 api 方式
      * redisServerAsync: 超时重试 Redis 服务端 异步开关
@@ -71,10 +61,6 @@ public class NettyChannelDispatcher {
                 log.info("find redis client way attribute is jedis");
             } else if ("lettuce".equals(redisServerWay)) {
                 log.info("find redis client way attribute is lettuce");
-                /**
-                 * 由于 LRedisHelper 首次启动需要创建线程池，主动触发懒加载进行预加载
-                 */
-                //LRedisHelper.preLoad();
                 try {
                     redisServerAsync = configResource.getString(PropertiesConstants.REDIS_SERVER_ASYNC);
 
@@ -108,10 +94,6 @@ public class NettyChannelDispatcher {
                     log.info("find redis server way attribute is jedis");
                 } else if ("lettuce".equals(redisServerWay)) {
                     log.info("find redis server way attribute is lettuce");
-                    /**
-                     * 由于 LRedisHelper 首次启动需要创建线程池，主动触发懒加载进行预加载
-                     */
-                    //LRedisHelper.preLoad();
                     try {
                         redisServerAsync = resource.getString(PropertiesConstants.REDIS_SERVER_ASYNC);
 
@@ -147,138 +129,97 @@ public class NettyChannelDispatcher {
         log.info("netty channel dispatcher initialize successfully!");
     }
 
+
     public static void dispatch(ChannelHandlerContext ctx, RpcRequest msg) {
-        operationExecutorService.submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    log.info("server has received request package: {}", msg);
+        operationExecutorService.submit(() -> {
+            log.info("server has received request package: {}", msg);
+            // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
+            /**
+             * 改良 2023.1.9
+             * 使用 Redis 实现分布式缓存
+             * 改良 2023.3.19
+             * 抛弃 Redis 检验 重发包
+             * 采用 客户端  请求包 标志位，减少一次 判断 Redis IO 操作
+             */
+            Object result = null;
+            AbstractRedisConfiguration redisServerConfig = AbstractRedisConfiguration.getServerConfig();
+            //if (!redisServerConfig.existsRetryResult(msg.getRequestId())) {
+            if (!msg.getReSend()) {
+                log.info("[requestId: {}, reSend: {}] does not exist, store the result in the distributed cache", msg.getRequestId(), msg.getReSend());
+                result = requestHandler.handler(msg);
+                if (result != null) {
+                    writeResultToChannel(ctx, msg, result);
 
-                    // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
-
-                    /**
-                     * 改良
-                     * 使用 Redis 实现分布式缓存
-                     *
-                     */
-                    Object result = null;
-
-                    if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
-                        if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
-                            log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
-                            result = requestHandler.handler(msg);
-                            if (result != null)
-                                JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
-                            else {
-                                JRedisHelper.setRetryRequestResult(msg.getRequestId(), null);
-                            }
+                    String redisServerWay = AbstractRedisConfiguration.getRedisServerWay();
+                    if ("jedis".equals(redisServerWay))
+                        redisServerConfig.setRetryRequestResultByString(msg.getRequestId(), JsonUtils.objectToJson(result));
+                    else {
+                        String redisServerAsync = AbstractRedisConfiguration.getRedisServerAsync();
+                        if ("true".equals(redisServerAsync)) {
+                            redisServerConfig.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
                         } else {
-                            result = JRedisHelper.getForRetryRequestId(msg.getRequestId());
-                            if (result != null) {
-                                result = JsonUtils.jsonToPojo((String) result,  msg.getReturnType());
-                            }
-                            log.info("Previous results:{} ", result);
-                            log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
-                        }
-                    } else {
-
-                        if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
-                            log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
-                            result = requestHandler.handler(msg);
-
-                            if ("true".equals(redisServerAsync) && result != null) {
-                                LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
-                            } else {
-                                if (result != null)
-                                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
-                                else {
-                                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), null);
-                                }
-                            }
-                        } else {
-                            result = LRedisHelper.getForRetryRequestId(msg.getRequestId());
-                            if (result != null) {
-                                result = serializer.deserialize((byte[]) result, msg.getReturnType());
-                            }
-                            log.info("Previous results:{} ", result);
-                            log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
+                            redisServerConfig.setRetryRequestResultByBytes(msg.getRequestId(), serializer.serialize(result));
                         }
                     }
-
-                    /**
-                     * 这里要防止重试
-                     * 分为两种情况
-                     * 1. 如果是 客户端发送给服务端 途中出现问题，请求包之前 服务器未获取到，也就是 唯一请求id号 没有重复
-                     * 2. 如果是 服务端发回客户端途中出现问题，导致客户端触发 超时重试，这时服务端会 接收 重试请求包，也就是有 重复请求id号
-
-                     // 请求id 为第一次请求 id
-                     Object result = null;
-                     if (timeoutRetryRequestIdSet.add(msg.getRequestId())) {
-                     result = requestHandler.handler(msg);
-                     resMap.put(msg.getRequestId(), result);
-                     //请求id 为第二次或以上请求
-                     } else {
-                     result = resMap.get(msg.getRequestId());
-                     }
-                     */
-                    // 生成 校验码，客户端收到后 会 对 数据包 进行校验
-                    if (ctx.channel().isActive() && ctx.channel().isWritable()) {
-                        /**
-                         * 这里要分两种情况：
-                         * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
-                         * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
-                         */
-                        String checkCode = "";
-                        // 这里做了 当 data为 null checkCode 为 null，checkCode可作为 客户端的判断 返回值 依据
-                        if(result != null) {
-                            try {
-                                checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
-                            } catch (UnsupportedEncodingException e) {
-                                log.error("binary stream conversion failure: ", e);
-                                //e.printStackTrace();
-                            }
-                        } else {
-                            checkCode = null;
-                        }
-                        RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
-                        log.info(String.format("server send back response package {requestId: %s, message: %s, statusCode: %s ]}", rpcResponse.getRequestId(), rpcResponse.getMessage(), rpcResponse.getStatusCode()));
-                        ChannelFuture future = ctx.writeAndFlush(rpcResponse);
-
-
-                        /**
-                         * 大于 1000 条请求id 时，及时清除不用的请求 id
-                         * 保存此时 服务接收的请求 id
-                         * 考虑多线程中 对其他 线程刚添加的请求id 进行清除的影响
-
-                         if (timeoutRetryRequestIdSet.size() >= 1000) {
-                         synchronized (this) {
-                         if (timeoutRetryRequestIdSet.size() >= 1000) {
-                         timeoutRetryRequestIdSet.clear();
-                         resMap.clear();
-                         timeoutRetryRequestIdSet.add(msg.getRequestId());
-                         resMap.put(msg.getRequestId(), result);
-                         } else {
-                         timeoutRetryRequestIdSet.add(msg.getRequestId());
-                         resMap.put(msg.getRequestId(), result);
-                         }
-                         }
-                         } */
-
-
+                } else {
+                    String redisServerAsync = AbstractRedisConfiguration.getRedisServerAsync();
+                    if ("true".equals(redisServerAsync)) {
+                        redisServerConfig.asyncSetRetryRequestResult(msg.getRequestId(), null);
                     } else {
-                        log.info("channel status [active: {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable() );
-                        log.error("channel is not writable");
+                        redisServerConfig.setRetryRequestResultByBytes(msg.getRequestId(), null);
                     }
-                    /**
-                     * 1. 通道关闭后，对于 心跳包 将不可用
-                     * 2. 由于客户端 使用了 ChannelProvider 来 缓存 channel，这里关闭后，无法 发挥 channel 缓存的作用
-                     */
-                    //future.addListener(ChannelFutureListener.CLOSE);
-                } finally {
-                    ReferenceCountUtil.release(msg);
                 }
+            } else {
+                String redisServerWay = AbstractRedisConfiguration.getRedisServerWay();
+                if ("jedis".equals(redisServerWay)) {
+                    result = redisServerConfig.getResultForRetryRequestId2String(msg.getRequestId());
+                    if (result != null) {
+                        result = JsonUtils.jsonToPojo((String) result,  msg.getReturnType());
+                    }
+                } else {
+                    result = redisServerConfig.getResultForRetryRequestId2Bytes(msg.getRequestId());
+                    if (result != null) {
+                        result = serializer.deserialize((byte[]) result, msg.getReturnType());
+                    }
+                }
+                log.debug("Previous results:{} ", result);
+                log.info(" >>> Capture reSend package [requestId: {} [method: {}, returnType: {}] <<< ", msg.getRequestId(), msg.getMethodName(), msg.getReturnType());
+
+                writeResultToChannel(ctx, msg, result);
             }
+
         });
+    }
+
+    private static void writeResultToChannel(ChannelHandlerContext ctx, RpcRequest msg, Object result) {
+        // 生成 校验码，客户端收到后 会 对 数据包 进行校验
+        if (ctx.channel().isActive() && ctx.channel().isWritable()) {
+            /**
+             * 这里要分两种情况：
+             * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
+             * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
+             */
+            String checkCode = "";
+            // 这里做了 当 data为 null checkCode 为 null，checkCode可作为 客户端的判断 返回值 依据
+            if(result != null) {
+                try {
+                    checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
+                } catch (UnsupportedEncodingException e) {
+                    log.error("binary stream conversion failure: ", e);
+                    //e.printStackTrace();
+                }
+            } else {
+                checkCode = null;
+            }
+            RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
+            log.info(String.format("server send back response package {requestId: %s, message: %s, statusCode: %s ]}", rpcResponse.getRequestId(), rpcResponse.getMessage(), rpcResponse.getStatusCode()));
+            ChannelFuture future = ctx.writeAndFlush(rpcResponse);
+
+
+        } else {
+            log.info("channel status [active: {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable() );
+            log.error("channel is not writable");
+        }
     }
 
     public static void shutdownAll() {

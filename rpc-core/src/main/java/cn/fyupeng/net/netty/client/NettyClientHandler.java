@@ -25,10 +25,14 @@ import java.net.InetSocketAddress;
 @Slf4j
 public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
 
-    private final UnprocessedRequests unprocessedRequests;
+    private static final UnprocessedResults<RpcResponse> unprocessedRequests;
+
+    static {
+        unprocessedRequests = SingleFactory.getInstance(UnprocessedResults.class);
+    }
 
     public NettyClientHandler() {
-        unprocessedRequests = SingleFactory.getInstance(UnprocessedRequests.class);
+
     }
 
     @Override
@@ -44,7 +48,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
              */
             //AttributeKey<RpcResponse> key = AttributeKey.valueOf(msg.getRequestId());
             //ctx.channel().attr(key).set(msg);
-            unprocessedRequests.complete(msg);
+            unprocessedRequests.complete(msg.getRequestId(), msg);
             //ctx.channel().close();
         } finally {
             ReferenceCountUtil.release(msg);
@@ -72,7 +76,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
                 log.debug("Send heartbeat packets to server[{}]", ctx.channel().remoteAddress());
                 NettyChannelProvider.get((InetSocketAddress) ctx.channel().remoteAddress(), CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER));
                 RpcRequest rpcRequest = new RpcRequest();
-                rpcRequest.setHeartBeat(true);
+                rpcRequest.setHeartBeat(Boolean.TRUE);
                 ctx.writeAndFlush(rpcRequest).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
             }
         } else {

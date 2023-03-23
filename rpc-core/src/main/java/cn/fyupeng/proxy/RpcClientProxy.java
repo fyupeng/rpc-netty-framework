@@ -2,16 +2,17 @@ package cn.fyupeng.proxy;
 
 
 import cn.fyupeng.annotation.Reference;
+import cn.fyupeng.config.AbstractRedisConfiguration;
 import cn.fyupeng.config.Configuration;
 import cn.fyupeng.exception.AsyncTimeUnreasonableException;
 import cn.fyupeng.exception.RetryTimeoutException;
-import cn.fyupeng.exception.RpcTransmissionException;
 import cn.fyupeng.factory.SingleFactory;
 import cn.fyupeng.hook.ClientShutdownHook;
 import cn.fyupeng.idworker.Sid;
+import cn.fyupeng.idworker.WorkerIdServer;
 import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.net.netty.client.NettyClient;
-import cn.fyupeng.net.netty.client.UnprocessedRequests;
+import cn.fyupeng.net.netty.client.UnprocessedResults;
 import cn.fyupeng.net.socket.client.SocketClient;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
@@ -23,10 +24,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ServiceLoader;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.*;
 
 /**
  * @Auther: fyp
@@ -51,16 +49,22 @@ public class RpcClientProxy implements InvocationHandler {
     */
    private Class<?> pareClazz = null;
 
-   private AtomicInteger sucRes = new AtomicInteger(0);
-   private AtomicInteger errRes = new AtomicInteger(0);
-   private AtomicInteger timeoutRes = new AtomicInteger(0);
-
    /**
     * 未处理请求，主要处理失败请求，多线程共享
     */
-   private static UnprocessedRequests unprocessedRequests = SingleFactory.getInstance(UnprocessedRequests.class);
+   private static UnprocessedResults unprocessedRequests = SingleFactory.getInstance(UnprocessedResults.class);
+
+   private static String redisServerWay = "";
 
    static {
+      /**
+       * 配置 Redis 预加载
+       */
+      AbstractRedisConfiguration.getClientConfig();
+      /**
+       *  配置 WorkerId 预加载
+       */
+      configWorkerServer();
       /**
        * 使用 SPI 机制进行预加载
        * 解决 静态代码块 无法兼容多态扩展的方式
@@ -73,6 +77,9 @@ public class RpcClientProxy implements InvocationHandler {
     */
    public RpcClientProxy(RpcClient rpcClient) {
       this.rpcClient = rpcClient;
+      ClientShutdownHook.getShutdownHook()
+              .addClient(rpcClient)
+              .addClearAllHook();
    }
 
 
@@ -100,12 +107,12 @@ public class RpcClientProxy implements InvocationHandler {
     */
    @Deprecated
    public <T> T getProxy(Class<T> clazz){
-      return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[] {clazz}, this);
+      return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[] {clazz},this);
    }
+
 
    @Override
    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-
       RpcRequest rpcRequest = new RpcRequest.Builder()
               /**
                * 使用雪花算法 解决分布式 RPC 各节点生成请求号 id 一致性问题
@@ -123,28 +130,48 @@ public class RpcClientProxy implements InvocationHandler {
               /**这里心跳指定为false，一般由另外其他专门的心跳 handler 来发送
                * 如果发送 并且 hearBeat 为 true，说明触发发送心跳包
                */
-              .heartBeat(false)
+              .heartBeat(Boolean.FALSE)
+              .reSend(Boolean.FALSE)
               .build();
-
       RpcResponse rpcResponse = null;
 
-      if (pareClazz == null) {
-         log.info("invoke method:{}#{}", method.getDeclaringClass().getName(), method.getName());
-         if (rpcClient instanceof NettyClient) {
-            CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
-            rpcResponse = completableFuture.get();
-         }
-         if (rpcClient instanceof SocketClient) {
-            rpcResponse = (RpcResponse) rpcClient.sendRequest(rpcRequest);
-         }
-         RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
-         return rpcResponse.getData();
+      if (rpcClient instanceof SocketClient) {
+         rpcResponse = revokeSocketClient(rpcRequest, method);
+      } else if (rpcClient instanceof NettyClient){
+         rpcResponse = revokeNettyClient(rpcRequest, method);
       }
+
+      return rpcResponse == null ? null : rpcResponse.getData();
+   }
+
+   private RpcResponse revokeNettyClient(RpcRequest rpcRequest, Method method)  throws Throwable {
+      RpcResponse rpcResponse = null;
+      if (pareClazz == null) {
+         CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+         rpcResponse = completableFuture.get();
+
+         RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
+         return rpcResponse;
+      }
+
+      /**
+       * 服务组名、重试机制实现
+       */
+      long timeout = 0L;
+      long asyncTime = 0L;
+      int retries = 0;
+      int giveTime = 0;
+      boolean useRetry = false;
 
       Field[] fields = pareClazz.getDeclaredFields();
       for (Field field : fields) {
          if (field.isAnnotationPresent(Reference.class) &&
                  method.getDeclaringClass().getName().equals(field.getType().getName())) {
+            retries = field.getAnnotation(Reference.class).retries();
+            giveTime =field.getAnnotation(Reference.class).giveTime();
+            timeout = field.getAnnotation(Reference.class).timeout();
+            asyncTime =field.getAnnotation(Reference.class).asyncTime();
+            useRetry = true;
             String name = field.getAnnotation(Reference.class).name();
             String group = field.getAnnotation(Reference.class).group();
             if (!"".equals(name)) {
@@ -157,102 +184,105 @@ public class RpcClientProxy implements InvocationHandler {
          }
       }
 
-      log.info("invoke method:{}#{}", method.getDeclaringClass().getName(), method.getName());
 
-      if (rpcClient instanceof NettyClient) {
-         /**
-          * 重试机制实现
-          */
-         long timeout = 0L;
-         long asyncTime = 0L;
-         int retries = 0;
-         boolean useRetry = false;
 
+
+      /**
+       * 1、识别不到 @Reference 注解执行
+       * 2、识别到 @Reference 且 asyncTime 缺省 或 asyncTime <= 0
+       */
+      if (!useRetry || asyncTime <= 0 || giveTime <= 0) {
+         log.debug("discover @Reference or asyncTime <= 0, will use blocking mode");
+         long startTime = System.currentTimeMillis();
+         log.info("start calling remote service [requestId: {}, serviceMethod: {}]", rpcRequest.getRequestId(), rpcRequest.getMethodName());
+         CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+         rpcResponse = completableFuture.get();
+         long endTime = System.currentTimeMillis();
+
+         log.info("handling the task takes time {} ms", endTime - startTime);
+
+         RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
+
+      } else {
          /**
-          * 匹配该代理方法所调用 的服务实例，是则获取相关注解信息 并跳出循环
+          * 识别到 @Reference 注解 且 asyncTime > 0 执行
           */
+         log.debug("discover @Reference and asyncTime > 0, will use blocking mode");
+         if (timeout >= asyncTime) {
+            log.error("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
+            throw new AsyncTimeUnreasonableException("Asynchronous time is unreasonable, it should greater than timeout");
+         }
+         long handleTime = 0;
+         boolean checkPass = false;
+         for (int i = 0; i < retries; i++) {
+            if (handleTime >= timeout) {
+               // 超时重试
+               TimeUnit.SECONDS.sleep(giveTime);
+               rpcRequest.setReSend(Boolean.TRUE);
+               log.warn("call service timeout and retry to call [ rms: {}, tms: {} ]", handleTime, timeout);
+            }
+            long startTime = System.currentTimeMillis();
+            log.info("start calling remote service [requestId: {}, serviceMethod: {}]", rpcRequest.getRequestId(), rpcRequest.getMethodName());
+            CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
+            try {
+               rpcResponse = completableFuture.get(asyncTime, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+               // 忽视 超时引发的异常，自行处理，防止程序中断
+               log.warn("recommend that asyncTime [ {} ] should be greater than current task runeTime [ {} ]", asyncTime, System.currentTimeMillis() - startTime);
+               continue;
+            }
+
+            long endTime = System.currentTimeMillis();
+            handleTime = endTime - startTime;
+
+            if (handleTime < timeout) {
+               // 没有超时不用再重试
+               // 进一步校验包
+               checkPass = RpcMessageChecker.check(rpcRequest, rpcResponse);
+               if (checkPass) {
+                  log.info("client call success [ rms: {}, tms: {} ]", handleTime, timeout);
+                  return rpcResponse;
+               }
+               // 包被 劫持触发 超时重发机制 保护重发
+            }
+         }
+         log.info("client call failed  [ rms: {}, tms: {} ]", handleTime, timeout);
+         // 客户端在这里无法探知是否成功收到服务器响应，只能确定该请求包 客户端已经抛弃了
+         unprocessedRequests.remove(rpcRequest.getRequestId());
+         throw new RetryTimeoutException("The retry call timeout exceeds the threshold, the channel is closed, the thread is interrupted, and an exception is forced to be thrown!");
+      }
+
+      return rpcResponse;
+   }
+
+   private RpcResponse revokeSocketClient(RpcRequest rpcRequest, Method method) throws Throwable {
+      RpcResponse rpcResponse = null;
+      if (pareClazz != null) {
+         Field[] fields = pareClazz.getDeclaredFields();
          for (Field field : fields) {
-            if (field.isAnnotationPresent(Reference.class) && method.getDeclaringClass().getName().equals(field.getType().getName())) {
-               retries = field.getAnnotation(Reference.class).retries();
-               timeout = field.getAnnotation(Reference.class).timeout();
-               asyncTime =field.getAnnotation(Reference.class).asyncTime();
-               useRetry = true;
+            if (field.isAnnotationPresent(Reference.class) &&
+                    method.getDeclaringClass().getName().equals(field.getType().getName())) {
+               String name = field.getAnnotation(Reference.class).name();
+               String group = field.getAnnotation(Reference.class).group();
+               if (!"".equals(name)) {
+                  rpcRequest.setInterfaceName(name);
+               }
+               if (!"".equals(group)) {
+                  rpcRequest.setGroup(group);
+               }
                break;
             }
          }
-         /**
-          * 1、识别不到 @Reference 注解执行
-          * 2、识别到 @Reference 且 asyncTime 缺省 或 asyncTime <= 0
-          */
-         if (!useRetry || asyncTime <= 0) {
-            log.debug("discover @Reference or asyncTime <= 0, will use blocking mode");
-            long startTime = System.currentTimeMillis();
-            CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
-            rpcResponse = completableFuture.get();
-            long endTime = System.currentTimeMillis();
-
-            log.info("handling the task takes time {} ms", endTime - startTime);
-
-            RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
-         } else {
-            /**
-             * 识别到 @Reference 注解 且 asyncTime > 0 执行
-             */
-            log.debug("discover @Reference and asyncTime > 0, will use blocking mode");
-            if (timeout >= asyncTime) {
-               log.error("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
-               throw new AsyncTimeUnreasonableException("Asynchronous time is unreasonable, it should greater than timeout");
-            }
-            long handleTime = 0;
-            boolean checkPass = false;
-            for (int i = 0; i < retries; i++) {
-               long startTime = System.currentTimeMillis();
-
-               CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
-               try {
-                  rpcResponse = completableFuture.get(asyncTime, TimeUnit.MILLISECONDS);
-               } catch (TimeoutException e) {
-                  // 忽视 超时引发的异常，自行处理，防止程序中断
-                  timeoutRes.incrementAndGet();
-                  log.warn("recommend that asyncTime [ {} ] should be greater than current task runeTime [ {} ]", asyncTime, System.currentTimeMillis() - startTime);
-                  continue;
-               }
-
-               long endTime = System.currentTimeMillis();
-               handleTime = endTime - startTime;
-               log.info("handling the task takes time {} ms", handleTime);
-
-               if (handleTime >= timeout) {
-                  // 超时重试
-                  log.warn("invoke service timeout and retry to invoke [ rms: {}, tms: {} ]", handleTime, timeout);
-                  log.info("client  call timeout counts {}", timeoutRes.incrementAndGet());
-               } else {
-                  // 没有超时不用再重试
-                  // 进一步校验包
-                  checkPass = RpcMessageChecker.check(rpcRequest, rpcResponse);
-                  if (checkPass) {
-                     log.info("client call success counts {} [ rms: {}, tms: {} ]", sucRes.incrementAndGet(), handleTime, timeout);
-                     return rpcResponse.getData();
-                  }
-                  // 包被 劫持触发 超时重发机制 保护重发
-               }
-            }
-            // 最后一次 重发请求包 仍被劫持
-            if (!checkPass) {
-               throw new RpcTransmissionException("RPC data transmission is abnormal, the packet is hijacked to trigger the retransmission mechanism, the retransmission mechanism is frequently hijacked under retry, and the operation is interrupted here");
-            }
-            log.info("client call failed counts {} [ rms: {}, tms: {} ]", errRes.incrementAndGet(), handleTime, timeout);
-            // 客户端在这里无法探知是否成功收到服务器响应，只能确定该请求包 客户端已经抛弃了
-            unprocessedRequests.remove(rpcRequest.getRequestId());
-            throw new RetryTimeoutException("The retry call timeout exceeds the threshold, the channel is closed, the thread is interrupted, and an exception is forced to be thrown!");
-         }
-
       }
+      rpcResponse = (RpcResponse) rpcClient.sendRequest(rpcRequest);
+      RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
 
-      if (rpcClient instanceof SocketClient) {
-         rpcResponse = (RpcResponse) rpcClient.sendRequest(rpcRequest);
-         RpcMessageChecker.checkAndThrow(rpcRequest, rpcResponse);
-      }
-      return rpcResponse.getData();
+      return rpcResponse;
    }
+
+
+   private static void configWorkerServer() {
+      WorkerIdServer.preLoad();
+   }
+
 }

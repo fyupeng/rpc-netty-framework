@@ -1,31 +1,11 @@
 package cn.fyupeng.net.netty.server;
 
-import cn.fyupeng.handler.RequestHandler;
-import cn.fyupeng.idworker.utils.JRedisHelper;
-import cn.fyupeng.idworker.utils.LRedisHelper;
 import cn.fyupeng.protocol.RpcRequest;
-
-import cn.fyupeng.protocol.RpcResponse;
-import cn.fyupeng.serializer.CommonSerializer;
-import cn.fyupeng.util.JsonUtils;
-import cn.fyupeng.util.PropertiesConstants;
-import com.alibaba.nacos.common.utils.StringUtils;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
-import io.netty.util.ReferenceCountUtil;
-import io.netty.util.concurrent.DefaultEventExecutorGroup;
-import io.netty.util.concurrent.EventExecutorGroup;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.*;
 
 /**
  * @Auther: fyp
@@ -45,14 +25,14 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
      */
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
-            /**
-             * 心跳包 只 作为 检测包，不做处理
-             */
-            if (msg.getHeartBeat()) {
-                log.debug("receive hearBeatPackage from customer...");
-                return;
-            }
-            NettyChannelDispatcher.dispatch(ctx, msg);
+        /**
+         * 心跳包 只 作为 检测包，不做处理
+                */
+        if (msg.getHeartBeat()) {
+            log.debug("receive hearBeatPackage from customer...");
+            return;
+        }
+        NettyChannelDispatcher.dispatch(ctx, msg);
     }
 
     @Override

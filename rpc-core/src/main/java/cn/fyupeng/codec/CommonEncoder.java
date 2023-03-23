@@ -19,7 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 public class CommonEncoder extends MessageToByteEncoder {
 
     // 对象头的魔术: cafe babe 表示 class 类型的文件
-    private static final int MAGIC_NUMBER = 0xCAFEBABE;
+    //private static final int MAGIC_NUMBER = 0xCAFEBABE;
+    private static final short MAGIC_NUMBER = (short) 0xBABE;
 
     private final CommonSerializer serializer;
 
@@ -46,19 +47,29 @@ public class CommonEncoder extends MessageToByteEncoder {
      * |                           Data Bytes                          |
      * |                       Length: ${Data Length}                  |
      * +---------------+---------------+-----------------+-------------+
+     *
+     *                            ↓  改良  ↓
+     *
+     * +---------------+---------------+-----------------+-------------+
+     * | Magic Number  | Package Type  | Serializer Type | Data Length |
+     * | 2 bytes       | 1 bytes       | 1 bytes         | 4 bytes     |
+     * +---------------+---------------+-----------------+-------------+
+     * |                           Data Bytes                          |
+     * |                       Length: ${Data Length}                  |
+     * +---------------+---------------+-----------------+-------------+
      */
     @Override
     protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws Exception {
-        out.writeInt(MAGIC_NUMBER); // 写进的四个字节
+        out.writeShort(MAGIC_NUMBER); // 写进的2个字节
         if (msg instanceof RpcRequest) {
-            out.writeInt(PackageType.REQUEST_PACK.getCode()); // 写进的四个字节
+            out.writeByte(PackageType.REQUEST_PACK.getCode()); // 写进的1个字节
         } else {
-            out.writeInt(PackageType.RESPONSE_PACK.getCode()); // 写进的四个字节
+            out.writeByte(PackageType.RESPONSE_PACK.getCode()); // 写进的1个字节
         }
-        out.writeInt(serializer.getCode()); // 写进的四个字节
+        out.writeByte(serializer.getCode()); // 写进的1个字节
         byte[] bytes = serializer.serialize(msg);
         int length = bytes.length;
-        out.writeInt(bytes.length); // 写进的四个字节
+        out.writeInt(bytes.length); // 写进的4个字节
         log.debug("encode object length [{}] bytes", length);
         out.writeBytes(bytes); // 写进的 对象内容，二进制形式
     }

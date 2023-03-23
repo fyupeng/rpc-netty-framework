@@ -30,6 +30,7 @@ public class SingleFactory {
                 if (instance == null) {
                     try {
                         instance = clazz.newInstance();
+                        objectMap.put(clazz, instance);
                     } catch (InstantiationException | IllegalAccessException e) {
                         throw new RuntimeException(e.getMessage(), e);
                     }
