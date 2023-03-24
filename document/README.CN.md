@@ -1,6 +1,6 @@
 ## 介绍
 
-![Version](https://img.shields.io/static/v1?label=Version&message=2.2.0&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=Version&message=2.2.3&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=Nacos&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=Netty&message=4.1.75.Final&color=blueviolet)
@@ -12,7 +12,7 @@
 - [x] 适用基于`Netty`的`IO`密集型场景应用，性能虽不如`CPU`密集型场景应用，但并发性是最好的；
 - [x] 支持分布式超时重试机制、幂等历史结果淘汰策略、异步缓存实现高效通信；
 - [x] 实现采用`Jedis/Lettuce`两种基于雪花算法的`id`生成器;
-- [x] 支持`JDK`内置`SPI`机制，实现接口与实现解耦；
+- [x] 支持`JDK`内置`SPI`机制，在扩展动态配置、注册器、服务发现和服务提供时，实现无侵入编程；
 - [x] 注册中心高可用性，提供集群注册中心，所有注册节点宕机后仍能通过缓存为用户持续提供服务；
 - [x] 提供个性化服务，推出个性化服务`name`、服务`group`，适合在测试、实验和正式环境的服务，以及为后期版本的兼容、维护和升级提供更好的服务；
 - [ ] 提供集群注册中心宕机重启服务；
@@ -32,12 +32,11 @@
 
 - 重试机制架构图
 
-![分布式异步超时重试机制.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/分布式异步超时重试机制.png)
-
+![总功能图](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/总功能图.png)
 
 - 服务发现与注册架构图
 
-![服务发现与注册.png.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/服务发现与注册.png)
+![架构图](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/架构图.png)
 
 ### 1. 服务提供
 - 负载均衡策略
@@ -150,16 +149,16 @@ IO 异步非阻塞 能够让客户端在请求数据时处于阻塞状态，而�
 
 ```java
 /**
-     * 自定义对象头 协议 16 字节
-     * 4 字节 魔数
-     * 4 字节 协议包类型
-     * 4 字节 序列化类型
+     * 自定义对象头 协议 8 字节
+     * 2 字节 魔数
+     * 1 字节 协议包类型
+     * 1 字节 序列化类型
      * 4 字节 数据长度
      *
      *       The transmission protocol is as follows :
      * +---------------+---------------+-----------------+-------------+
      * | Magic Number  | Package Type  | Serializer Type | Data Length |
-     * | 4 bytes       | 4 bytes       | 4 bytes         | 4 bytes     |
+     * | 2 bytes       | 1 bytes       | 1 bytes         | 4 bytes     |
      * +---------------+---------------+-----------------+-------------+
      * |                           Data Bytes                          |
      * |                       Length: ${Data Length}                  |
@@ -220,7 +219,7 @@ RNF Protocol
 <dependency>
     <groupId>cn.fyupeng</groupId>
     <artifactId>rpc-core</artifactId>
-    <version>2.2.0</version>
+    <version>2.2.3</version>
 </dependency>
 ```
 
@@ -248,7 +247,7 @@ public class Client {
   /**
    * 传递 Client.class 给代理，代理才能捕获到注解 @Reference
    */
-  @Reference(name = "helloService", group = "1.0.0", retries = 2, timeout = 2000, asyncTime = 18000)
+  @Reference(name = "helloService", group = "1.0.0", retries = 2, timeout = 2000, asyncTime = 18000, giveTime = 1)
   private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
 }
 ```
@@ -281,7 +280,7 @@ cn.fyupeng.redis.server-async=true
 </dependency>
 ```
 
-阿里仓库`10`月份开始处于系统升级，有些版本还没同步过去，推荐另一个`maven`官方仓库：
+推荐`maven`官方仓库：
 ```xml
 <mirror>
   <id>repo1maven</id>
@@ -500,12 +499,13 @@ cn.fyupeng.nacos.cluster.nodes=192.168.10.1:8847,192.168.10.1:8848,192.168.10.1:
 
 原因是客户端无法探测是客户端网络传输过程出现问题，或者是服务端正确接收后返回途中网络传输出现问题，因为如果是前者那么重试后能保证幂等性，如果为后者，可能将导致多次同个业务的执行，这对客户端来说结果是非一致的。
 
-超时重试处理会导致出现幂等性问题，因此在服务器中利用`HashSet`添加请求`id`来做超时处理
+超时重试机制会导致出现幂等性问题，因此在客户端请求包中加入重发标志位表明重发包、在服务器中使用`HashSet`添加请求`id`来做超时缓存处理
 
-- 超时重试：`cn.fyupeng.annotation.Reference`注解提供重试次数、超时时间和异步时间三个配置参数，其中：
+- 超时重试：`cn.fyupeng.annotation.Reference`注解提供重试次数、超时时间、异步时间和重试让出多个配置参数，其中：
   - 重试次数：服务端未能在超时时间内 响应，允许触发超时的次数
   - 超时时间：即客户端最长允许等待 服务端时长，超时即触发重试机制
   - 异步时间：即等待服务端异步响应的时间，且只能在超时重试机制使用，非超时重试情况下默认使用阻塞等待方式
+  - 重试让出时间：默认为 1 秒，降低线程调度cpu资源竞争，能够解决`cpu`吞吐量低下问题
 
 > 示例：
 ```java
@@ -513,41 +513,8 @@ private static RandomLoadBalancer randomLoadBalancer = new RandomLoadBalancer();
     private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.KRYO_SERIALIZER);
     private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
 
-    @Reference(retries = 2, timeout = 3000, asyncTime = 5000)
+    @Reference(retries = 2, timeout = 1000, asyncTime = 3000, giveTime = 1)
     private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
-```
-重试的实现也不难，采用`代理 + for + 参数`来实现即可。
-> 核心代码实现：
-```java
-for (int i = 0; i <= retries; i++) {
-    long startTime = System.currentTimeMillis();
-
-    CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
-    try {
-        rpcResponse = completableFuture.get(asyncTime, TimeUnit.MILLISECONDS);
-    } catch (TimeoutException e) {
-        // 忽视 超时引发的异常，自行处理，防止程序中断
-        timeoutRes.incrementAndGet();
-        if (timeout >= asyncTime) {
-            log.warn("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
-        }
-        continue;
-    }
-
-    long endTime = System.currentTimeMillis();
-    long handleTime = endTime - startTime;
-    if (handleTime >= timeout) {
-        // 超时重试
-        log.warn("invoke service timeout and retry to invoke");
-    } else {
-        // 没有超时不用再重试
-        // 进一步校验包
-        if (RpcMessageChecker.check(rpcRequest, rpcResponse)) {
-            res.incrementAndGet();
-            return rpcResponse.getData();
-        }
-    }
-}
 ```
 
 - 幂等性
@@ -608,7 +575,7 @@ for (int i = 0; i <= retries; i++) {
 
 而在`RPC`中主要采用雪花算法实现了请求包的唯一识别号，因为`UUID`生成唯一性和时间持续性比雪花算法更好，但它id值是非递增序列，在索引建立和维护时代价更高。
 
-雪花算法生成的`id`基本有序递增，可作为索引值，而且维护成本低，代价是强依赖机器时钟，为了尽可能发挥它的优势和减少不足，对最近的时间内保存了时间戳与序列号，回拨即获取当时序列号，有则自增，无则阻塞恢复到时钟回拨前的时间戳，回拨时间过大抛异常中断，而且服务器重启时小概率可能出现回拨会从而导致`id`值重复的问题。
+雪花算法生成的`id`基本有序递增，具有分布式唯一性，而且维护成本低，可作为主键或其他索引值，代价是强依赖机器时钟，服务器重启必须手动设置系统时间同步。
 ```properties
 cn.fyupeng.redis.server-addr=127.0.0.1:6379
 cn.fyupeng.redis.server-auth=true
@@ -622,9 +589,9 @@ cn.fyupeng.redis.server-way=lettuce
 cn.fyupeng.redis.client-way=jedis
 cn.fyupeng.redis.server-async=true
 ```
-如何选择`JRedisHelper`与`LRedisHelper`呢？
+如何选择`JRedis`与`LRedis`呢？
 
-JRedisHelper
+JRedis
 - 线程安全
 - `synchronized`与`lock`的悲观锁机制
 - 不提供线程池
@@ -633,7 +600,7 @@ JRedisHelper
 - 提供依据主机号缓存和获取机器`id`
 - 提供依据请求`id`缓存和获取请求结果
 
-LRedisHelper
+LRedis
 - 线程安全
 - 提供线程池
 - 连接数稳定且由线程池提供
@@ -643,7 +610,7 @@ LRedisHelper
 
 >特别提醒
 
-高并发请求不会出现请求号重复的情况，当前最高毫秒级并发`4096`，而超时机制、`LRedisHelper`线程池对连接的超时控制等配置参数还不成熟，具体应用场景可自行下载源码修改参数。
+高并发请求不会出现请求号重复的情况，当前最高毫秒级并发`4096`，而超时机制、`LRedis`线程池对连接的超时控制等配置参数还不成熟，具体应用场景可自行下载源码修改参数。
 
 ---- 
 
@@ -659,129 +626,6 @@ LRedisHelper
 
 这里读取之快又涉及到零拷贝，数据在用户态是不用拷贝的，直接透明使用。
 
-```java
-@Slf4j
-public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
-
-    private static RequestHandler requestHandler;
-  
-    /**
-     * Lettuce 分布式缓存采用 HESSIAN 序列化方式
-     */
-    private static CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER);
-  
-    /**
-     * netty 服务端采用 线程池处理耗时任务
-     */
-    private static final EventExecutorGroup group = new DefaultEventExecutorGroup(16);
-  
-    @Override
-    protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
-      /**
-       * 心跳包 只 作为 检测包，不做处理
-       */
-      if (msg.getHeartBeat()) {
-        log.debug("receive hearBeatPackage from customer...");
-        return;
-      }
-      group.submit(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            log.info("server has received request package: {}", msg);
-  
-            // 到了这一步，如果请求包在上一次已经被 服务器成功执行，接下来要做幂等性处理，也就是客户端设置超时重试处理
-  
-            /**
-             * 改良
-             * 使用 Redis 实现分布式缓存
-             *
-             */
-            Object result = null;
-  
-            if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
-              if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
-                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
-                result = requestHandler.handler(msg);
-                if (result != null)
-                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
-                else {
-                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), null);
-                }
-              } else {
-                result = JRedisHelper.getForRetryRequestId(msg.getRequestId());
-                if (result != null) {
-                  result = JsonUtils.jsonToPojo((String) result, msg.getReturnType());
-                }
-                log.info("Previous results:{} ", result);
-                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
-              }
-            } else {
-  
-              if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
-                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
-                result = requestHandler.handler(msg);
-  
-                if ("true".equals(redisServerAsync) && result != null) {
-                  LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
-                } else {
-                  if (result != null)
-                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
-                  else {
-                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), null);
-                  }
-                }
-              } else {
-                result = LRedisHelper.getForRetryRequestId(msg.getRequestId());
-                if (result != null) {
-                  result = serializer.deserialize((byte[]) result, msg.getReturnType());
-                }
-                log.info("Previous results:{} ", result);
-                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
-              }
-            }
-  
-            // 生成 校验码，客户端收到后 会 对 数据包 进行校验
-            if (ctx.channel().isActive() && ctx.channel().isWritable()) {
-              /**
-               * 这里要分两种情况：
-               * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
-               * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
-               */
-              String checkCode = "";
-              // 这里做了 当 data为 null checkCode 为 null，checkCode可作为 客户端的判断 返回值 依据
-              if (result != null) {
-                try {
-                  checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
-                } catch (UnsupportedEncodingException e) {
-                  log.error("binary stream conversion failure: ", e);
-                  //e.printStackTrace();
-                }
-              } else {
-                checkCode = null;
-              }
-              RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
-              log.info(String.format("server send back response package {requestId: %s, message: %s, statusCode: %s ]}", rpcResponse.getRequestId(), rpcResponse.getMessage(), rpcResponse.getStatusCode()));
-              ChannelFuture future = ctx.writeAndFlush(rpcResponse);
-  
-  
-            } else {
-              log.info("channel status [active: {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable());
-              log.error("channel is not writable");
-            }
-            /**
-             * 1. 通道关闭后，对于 心跳包 将不可用
-             * 2. 由于客户端 使用了 ChannelProvider 来 缓存 channel，这里关闭后，无法 发挥 channel 缓存的作用
-             */
-            //future.addListener(ChannelFutureListener.CLOSE);
-          } finally {
-            ReferenceCountUtil.release(msg);
-          }
-        }
-      });
-    }
-}
-```
 
 当然高并发下还要考虑一个问题，任务处理太慢时，不能让客户端一直阻塞等待，可以设置超时，避免因为服务端某一个任务影响到其他请求的执行，要让出给其他有需要的线程使用，于是引入的超时机制配合分布式缓存，在超时机制下，要么直接将第一次请求后服务端缓存的结果直接返回，要么直接失败，来保证它的一个高并发稳定性。
 
@@ -932,34 +776,45 @@ Output output = new Output(byteArrayOutputStream,100000))
 - 关闭钩子
 
 ```java
-public class ShutdownHook {
+public class ServerShutdownHook {
 
-    private static final ShutdownHook shutdownHook = new ClientShutdownHook();
+  private static final ServerShutdownHook shutdownHook = new ServerShutdownHook();
+  private ServiceRegistry serviceRegistry;
+  private RpcServer rpcServer;
 
-    public static ShutdownHook getShutdownHook() {
-        return shutdownHook;
-    }
+  public ServerShutdownHook addRegistry(ServiceRegistry serviceRegistry) {
+    this.serviceRegistry = serviceRegistry;
+    return this;
+  }
 
-    /**
-     * 添加关闭钩子
-     * 客户端钩子 跟 服务端钩子分开启动添加，不要放一起
-     */
-    public void addClearAllHook() {
-        log.info("All services will be cancel after shutdown");
-        Runtime.getRuntime().addShutdownHook(new Thread(()->{
-            // 服务端，由服务端钩子执行
-            JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
-            log.info("the cache for workId has bean cleared successfully");
-            NacosUtils.clearRegistry();
-            NettyServer.shutdownAll();
-            ThreadPoolFactory.shutdownAll();
-            
-            // 客户端，由客户端钩子执行
-            ChannelProvider.shutdownAll();
-            ThreadPoolFactory.shutdownAll();
-            // 其他 善后工作
-        }));
-    }
+  public ServerShutdownHook addServer(RpcServer rpcServer) {
+    this.rpcServer = rpcServer;
+    return this;
+  }
+
+  public static ServerShutdownHook getShutdownHook() {
+    return shutdownHook;
+  }
+  /**
+   * 添加清除钩子
+   * 开启 子线程的方式 帮助 gc
+   */
+  public void addClearAllHook() {
+    log.info("All services will be cancel after shutdown");
+    Runtime.getRuntime().addShutdownHook(new Thread(()->{
+      JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
+      log.info("the cache for workId has bean cleared successfully");
+      //NacosUtils.clearRegistry();
+      if (serviceRegistry != null) {
+        serviceRegistry.clearRegistry();
+      }
+      //NettyServer.shutdownAll();
+      // 开启子线程（非守护线程） 的方式能够 避免因服务器 关闭导致 关闭钩子 未能正常执行完毕（守护线程）
+      if(rpcServer != null) {
+        rpcServer.shutdown();
+      }
+    }));
+  }
 }
 ```
 
@@ -976,7 +831,10 @@ public class NettyServer extends AbstractRpcServer {
      *  封装了 之前 使用的 线程吃 和 任务队列
      *  实现了 ExecutorService 接口
      */
-    ShutdownHook.getShutdownHook().addClearAllHook();
+    ServerShutdownHook.getShutdownHook()
+            .addServer(this)
+            .addRegistry(serviceRegistry)
+            .addClearAllHook();
   }
 }
 ```
@@ -1039,9 +897,15 @@ Netty已经提供了优雅关闭，即`bossGroup.shutdownGracefully().sync()`，
 
 - [ [#2.1.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.10/pom) ]：修复客户端/服务端未能正常关闭问题，导致对端连接异常终止、整合统一的业务线程池，以便后期清理工作。
 
-#### 2.1版本
+#### 2.2版本
 
 - [ [#2.2.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.0/pom) ]：支持 扩展 `Bean` 自定义实例化，满足 `Spring` 注解依赖注入和注解切面执行需求、修正注解包名为`annotation`、解决服务注销时未能手动清除服务实例内存、性能小幅度提升、维护并发下轮询策略的不稳定性。
+
+- [ [#2.2.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.1/pom) ]：代码优化、性能优化、改进时钟回拨策略、支持第三方服务注册与发现功能的SPI扩展、支持负载均衡获取泛型服务。
+
+- [ [#2.2.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.2/pom) ]：解决单例工厂失效问题、优化线程池工厂、优化冗余配置。
+
+- [ [#2.2.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.3/pom) ]：将自定义协议16字节改为8字节、优化超时重试机制，修复高并发下存在的线程安全问题、大幅度提高性能。
 
 
 ---- 

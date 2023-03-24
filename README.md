@@ -1,6 +1,6 @@
 ## Introduction
 
-![Version](https://img.shields.io/static/v1?label=Version&message=2.2.0&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=Version&message=2.2.3&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=Nacos&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=Netty&message=4.1.75.Final&color=blueviolet)
@@ -13,7 +13,7 @@ A Distributed Microservice RPC Framework | [Chinese Documentation](/document/REA
 - [x] is suitable for 'IO' intensive scenario applications based on' Netty'. Although the performance is not as good as the' CPU' intensive scenario applications, concurrency is the best.
 - [x] support distributed timeout retry mechanism, idempotent historical result elimination strategy, asynchronous caching for efficient communication.
 - [x] Implementation of `id` generator using `Jedis/Lettuce` two snowflake-based algorithms;
-- [x] Support for the `JDK` built-in `SPI` mechanism for decoupling interfaces from implementations.
+- [x] Support 'JDK' built-in 'SPI' mechanism, in the extension of dynamic configuration, registry, service discovery and service provision, to achieve non-intrusive programming.
 - [x] registry high availability, providing clustered registries that can continue to serve users through caching even after all registered nodes are down.
 - [x] Providing personalized services, introducing personalized service `name`, service `group`, suitable in test, experimental and formal environments, as well as providing better services for compatibility, maintenance and upgrading of later versions.
 - [ ] Provide cluster registry downtime restart service.
@@ -33,12 +33,11 @@ Architecture Diagram
 
 - Retry mechanism architecture diagram
 
-![分布式异步超时重试机制.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/分布式异步超时重试机制.png)
+![总功能图](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/英总功能图3.png)
 
 - Service Discovery and Registration Architecture Diagram
 
-![服务发现与注册.png](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/服务发现与注册.png)
-
+![架构图](https://yupeng-tuchuang.oss-cn-shenzhen.aliyuncs.com/架构图1.png)
 
 ### 1. Service Provisioning
 - Load Balancing Policy
@@ -150,15 +149,15 @@ The data is transmitted in the channel `channel` between the server and the clie
 ```java
 /**
      * custom object header protocol 16 bytes
-     * 4 bytes magic number
-     * 4 bytes protocol packet type
-     * 4 bytes serialized type
+     * 2 bytes magic number
+     * 1 bytes protocol packet type
+     * 1 bytes serialized type
      * 4 bytes data length
      *
      *       The transmission protocol is as follows :
      * +---------------+---------------+-----------------+-------------+
      * | Magic Number  | Package Type  | Serializer Type | Data Length |
-     * | 4 bytes       | 4 bytes       | 4 bytes         | 4 bytes     |
+     * | 2 bytes       | 1 bytes       | 1 bytes         | 4 bytes     |
      * +---------------+---------------+-----------------+-------------+
      * |                           Data Bytes                          |
      * |                       Length: ${Data Length}                  |
@@ -219,7 +218,7 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
 <dependency>
 <groupId>cn.fyupeng</groupId
 <artifactId>rpc-core</artifactId>
-<version>2.0.8</version>
+<version>2.2.3</version>
 </dependency>
 ```
 Only configuration is supported before ``2.1.0`` version
@@ -247,11 +246,12 @@ public class Client {
   /**
    * Pass Client.class to the proxy so that the proxy can capture the annotation @Reference
    */
-  @Reference(name = "helloService", group = "1.0.0", retries = 2, timeout = 2000, asyncTime = 18000)
+  @Reference(name = "helloService", group = "1.0.0", retries = 2, timeout = 2000, asyncTime = 18000, giveTime = 1)
   private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
 }
 
-``2.1.0`` and later introduced
+```
+`2.1.0` and later introduced
 ```properties
 # Standalone mode
 cn.fyupeng.nacos.register-addr=192.168.10.1:8848
@@ -275,11 +275,11 @@ Recommend using the latest version ``2.1.7``, ``2.0`` version introduces distrib
 <dependency>
 <groupId>cn.fyupeng</groupId
 <artifactId>rpc-core</artifactId>
-<version>2.1.9</version>
+<version>2.1.10</version>
 </dependency>
 ```
 
-Ali repository in October began in the system upgrade, some versions have not been synchronized, recommend another `maven` official repository
+Recommend another `maven` official repository
 ```xml
 <mirror>
   <id>repo1maven</id>
@@ -492,11 +492,13 @@ The retry mechanism is not used by default, in order to ensure the correctness o
 
 The reason is that the client cannot detect whether there is a problem in the client's network transmission or a problem in the server's network transmission on the way back after receiving correctly, because if the former is the case, then retrying can guarantee idempotency, but if the latter is the case, it may lead to multiple executions of the same service, which is a non-consistent result for the client.
 
-Timeout retry processing can lead to idempotency problem, so we use `HashSet` to add request `id` to do timeout processing in the server:
-- Timeout retry: `cn.fyupeng.annotation.Reference` annotation provides three configuration parameters: retry count, timeout time and asynchronous time, where
-- Number of retries: the number of times the server fails to respond within the timeout period and is allowed to trigger a timeout
-- Timeout time: the maximum time allowed for the client to wait for the server, and the timeout triggers the retry mechanism
-- Asynchronous time: the time to wait for the asynchronous response from the server, and can only be used in the timeout retry mechanism, the default use of non-timeout retry blocking wait mode
+The timeout retry mechanism can cause idempotence problems, so adding a reissue flag bit to the client request packet indicates a reissue, and using 'HashSet' to add the request 'id' in the server for timeout cache processing.
+
+- timeout retry: 'cn.fyupeng.annotation.Reference' annotation provides multiple configuration parameters for retry times, timeout time, asynchronous time, and retry, where:
+  - Number of retries: the number of times the server fails to respond within the timeout period and is allowed to trigger a timeout
+  - Timeout time: the maximum time allowed for the client to wait for the server, and the timeout triggers the retry mechanism
+  - Asynchronous time: the time to wait for the asynchronous response from the server, and can only be used in the timeout retry mechanism, the default use of non-timeout retry blocking wait mode
+  - Retry surrender time: the default is 1 second, which reduces the competition of thread scheduling cpu resources and can solve the problem of low throughput of 'cpu'
 
 > For Example:
 ```java
@@ -504,41 +506,8 @@ private static RandomLoadBalancer randomLoadBalancer = new RandomLoadBalancer();
     private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.KRYO_SERIALIZER);
     private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
 
-    @Reference(retries = 2, timeout = 1000, asyncTime = 3000)
+    @Reference(retries = 2, timeout = 1000, asyncTime = 3000, giveTime = 1)
     private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
-```
-The implementation of retry is not difficult either, just use `proxy + for + arguments` to implement it.
-> Core code implementations:
-```java
-for (int i = 0; i <= retries; i++) {
-    long startTime = System.currentTimeMillis();
-
-    CompletableFuture<RpcResponse> completableFuture = (CompletableFuture<RpcResponse>) rpcClient.sendRequest(rpcRequest);
-    try {
-        rpcResponse = completableFuture.get(asyncTime, TimeUnit.MILLISECONDS);
-    } catch (TimeoutException e) {
-        // Ignore timeout exceptions and handle them yourself to prevent program interruptions
-        timeoutRes.incrementAndGet();
-        if (timeout >= asyncTime) {
-            log.warn("asyncTime [ {} ] should be greater than timeout [ {} ]", asyncTime, timeout);
-        }
-        continue;
-    }
-
-    long endTime = System.currentTimeMillis();
-    long handleTime = endTime - startTime;
-    if (handleTime >= timeout) {
-        // Timeout Retry
-        log.warn("invoke service timeout and retry to invoke");
-    } else {
-        // No timeout, no need to retry
-        // Check the package further
-        if (RpcMessageChecker.check(rpcRequest, rpcResponse)) {
-            res.incrementAndGet();
-            return rpcResponse.getData();
-        }
-    }
-}
 ```
 
 - Idempotency
@@ -597,7 +566,7 @@ Sequence number code concurrency, which occurs in the same millisecond, i.e. mil
 
 And in `RPC` mainly used the snowflake algorithm to achieve the unique identification number of the request packet, because `UUUID` generation uniqueness and time continuity than the snowflake algorithm is better, but it id value is non-increasing sequence, in the index establishment and maintenance of higher cost.
 
-Snowflake algorithm generated `id` basic orderly incremental, can be used as an index value, and low maintenance costs, the cost is a strong dependence on the machine clock, in order to maximize its advantages and reduce the shortcomings, to the nearest time within the preservation of the timestamp and sequence number, dial back that obtain the sequence number at that time, with the self-incrementing, no blocking to restore the timestamp before the clock dial back, dial back too much time to throw an abnormal interruption, and the server restart when a small probability of possible redial will thus lead to `id` value duplication problem.
+The 'id' generated by the snowflake algorithm is basically orderly increasing, distributed and unique, and has low maintenance cost. It can be used as a primary key or other index value at the cost of relying on the machine clock. The server must manually set the system time synchronization when restarting.
 
 ```properties
 cn.fyupeng.redis.server-addr=127.0.0.1:6379
@@ -651,130 +620,6 @@ This way, the single thread responsible for reading the `channel` bindings only 
 In terms of code details, reading the `channel` event means that the cache `buffer` has been read and will not affect other threads to continue reading the `channel`, but of course there will be a short blocking here because reading also takes some time, so there will not be multiple tasks submitted to perform crossover behavior.
 
 The fast read here also involves zero copy, the data in the user state is not copied, directly transparent use.
-
-```java
-@Slf4j
-public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
-
-    private static RequestHandler requestHandler;
-
-    /**
-     * Lettuce distributed cache using HESSIAN serialization
-     */
-    private static CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER);
-
-    /**
-     * netty server uses thread pools to handle time-consuming tasks
-     */
-    private static final EventExecutorGroup group = new DefaultEventExecutorGroup(16);
-  
-    @Override
-    protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
-      /**
-       * Heartbeat packets are only used as detection packets and are not processed
-       */
-      if (msg.getHeartBeat()) {
-        log.debug("receive hearBeatPackage from customer...");
-        return;
-      }
-      group.submit(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            log.info("server has received request package: {}", msg);
-
-            // At this point, if the request packet was successfully executed by the server the last time, the next step is to do idempotent processing, i.e. the client sets a timeout to retry
-
-            /**
-             * Improvements
-             * Distributed caching using Redis
-             *
-             */
-            Object result = null;
-  
-            if ("jedis".equals(redisServerWay) || "default".equals(redisServerWay) || StringUtils.isBlank(redisServerWay)) {
-              if (!JRedisHelper.existsRetryResult(msg.getRequestId())) {
-                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
-                result = requestHandler.handler(msg);
-                if (result != null)
-                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), JsonUtils.objectToJson(result));
-                else {
-                  JRedisHelper.setRetryRequestResult(msg.getRequestId(), null);
-                }
-              } else {
-                result = JRedisHelper.getForRetryRequestId(msg.getRequestId());
-                if (result != null) {
-                  result = JsonUtils.jsonToPojo((String) result, msg.getReturnType());
-                }
-                log.info("Previous results:{} ", result);
-                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
-              }
-            } else {
-  
-              if (LRedisHelper.existsRetryResult(msg.getRequestId()) == 0L) {
-                log.info("requestId[{}] does not exist, store the result in the distributed cache", msg.getRequestId());
-                result = requestHandler.handler(msg);
-  
-                if ("true".equals(redisServerAsync) && result != null) {
-                  LRedisHelper.asyncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
-                } else {
-                  if (result != null)
-                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), serializer.serialize(result));
-                  else {
-                    LRedisHelper.syncSetRetryRequestResult(msg.getRequestId(), null);
-                  }
-                }
-              } else {
-                result = LRedisHelper.getForRetryRequestId(msg.getRequestId());
-                if (result != null) {
-                  result = serializer.deserialize((byte[]) result, msg.getReturnType());
-                }
-                log.info("Previous results:{} ", result);
-                log.info(" >>> Capture the timeout packet and call the previous result successfully <<< ");
-              }
-            }
-  
-            // 生成 校验码，客户端收到后 会 对 数据包 进行校验
-            if (ctx.channel().isActive() && ctx.channel().isWritable()) {
-              /**
-               * Here there are two cases.
-               * 1. when the data has no return value, ensure that the checkCode and result can be checked, and the client must also determine whether the checkCode is also null when the result is null, in order to consider that it is not modified by others
-               * 2. when the data has a return value, check whether the md5 code of checkCode and result are the same
-               */
-              String checkCode = "";
-              // This is done when the data is null checkCode is null, checkCode can be used as the client's judgment return value based on
-              if (result != null) {
-                try {
-                  checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
-                } catch (UnsupportedEncodingException e) {
-                  log.error("binary stream conversion failure: ", e);
-                  //e.printStackTrace();
-                }
-              } else {
-                checkCode = null;
-              }
-              RpcResponse rpcResponse = RpcResponse.success(result, msg.getRequestId(), checkCode);
-              log.info(String.format("server send back response package {requestId: %s, message: %s, statusCode: %s ]}", rpcResponse.getRequestId(), rpcResponse.getMessage(), rpcResponse.getStatusCode()));
-              ChannelFuture future = ctx.writeAndFlush(rpcResponse);
-  
-  
-            } else {
-              log.info("channel status [active: {}, writable: {}]", ctx.channel().isActive(), ctx.channel().isWritable());
-              log.error("channel is not writable");
-            }
-            /**
-             * 1. When the channel is closed, it will not be available for heartbeat packets.
-             * 2. Since the client uses ChannelProvider to cache the channel, the channel cache will not be available after it is closed.
-             */
-            //future.addListener(ChannelFutureListener.CLOSE);
-          } finally {
-            ReferenceCountUtil.release(msg);
-          }
-        }
-      });
-    }
-}
-```
 
 Of course, there is still a problem to be considered under high concurrency. When the task processing is too slow, the client cannot be blocked and waited all the time. Timeout can be set to avoid giving up to other threads in need because a task on the server affects the execution of other requests. Therefore, the timeout mechanism introduced is combined with distributed cache. Under the timeout mechanism, either the result cached on the server after the first request is directly returned or directly failed, to ensure a high concurrency stability.
 
@@ -925,33 +770,45 @@ And there is no longer the problem of sending `RST`, that is, there is still dat
 - Closing hooks
 
 ```java
-public class ShutdownHook {
+public class ServerShutdownHook {
 
-    private static final ShutdownHook shutdownHook = new ClientShutdownHook();
+  private static final ServerShutdownHook shutdownHook = new ServerShutdownHook();
+  private ServiceRegistry serviceRegistry;
+  private RpcServer rpcServer;
 
-    public static ShutdownHook getShutdownHook() {
-        return shutdownHook;
-    }
+  public ServerShutdownHook addRegistry(ServiceRegistry serviceRegistry) {
+    this.serviceRegistry = serviceRegistry;
+    return this;
+  }
+
+  public ServerShutdownHook addServer(RpcServer rpcServer) {
+    this.rpcServer = rpcServer;
+    return this;
+  }
+
+  public static ServerShutdownHook getShutdownHook() {
+    return shutdownHook;
+  }
 
     /**
      * Add shutdown hooks
      * Client-side hooks are added separately from server-side hooks, do not put them together
      */
     public void addClearAllHook() {
-        log.info("All services will be cancel after shutdown");
-        Runtime.getRuntime().addShutdownHook(new Thread(()->{
-            // Server-side, executed by server-side hooks
-            JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
-            log.info("the cache for workId has bean cleared successfully");
-            NacosUtils.clearRegistry();
-            NettyServer.shutdownAll();
-            ThreadPoolFactory.shutdownAll();
-
-            // Client side, executed by client hooks
-            ChannelProvider.shutdownAll();
-            ThreadPoolFactory.shutdownAll();
-            // Other Aftercare
-        }));
+      log.info("All services will be cancel after shutdown");
+      Runtime.getRuntime().addShutdownHook(new Thread(()->{
+        JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
+        log.info("the cache for workId has bean cleared successfully");
+        //NacosUtils.clearRegistry();
+        if (serviceRegistry != null) {
+          serviceRegistry.clearRegistry();
+        }
+        //NettyServer.shutdownAll();
+        // 开启子线程（非守护线程） 的方式能够 避免因服务器 关闭导致 关闭钩子 未能正常执行完毕（守护线程）
+        if(rpcServer != null) {
+          rpcServer.shutdown();
+        }
+      }));
     }
 }
 ```
@@ -969,7 +826,10 @@ public class NettyServer extends AbstractRpcServer {
      * Encapsulates the previously used thread eaters and task queues
      * implements the ExecutorService interface
      */
-    ShutdownHook.getShutdownHook().addClearAllHook();
+    ServerShutdownHook.getShutdownHook()
+            .addServer(this)
+            .addRegistry(serviceRegistry)
+            .addClearAllHook();
   }
 }
 ```
@@ -1031,10 +891,15 @@ Netty already provides a graceful shutdown, `bossGroup.shutdownGracefully().sync
 
 - [ [#2.1.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.10/pom) ]: Repair the client/server failed to normally closed questions, lead to end connection abort, Consolidate a unified pool of business threads for later cleanup.
 
-#### 2.1 version
+#### 2.2 version
 
 - [ [#2.2.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.0/pom) ]: supports the extension of 'Bean' custom instantiation, meets the requirements of 'Spring' annotation dependency injection and annotation section execution, corrects the annotation package name 'annotation', solves the failure to manually clear the memory of the service instance when the service is logged out, improves the performance slightly, and maintains the instability of the polling policy under concurrency.
 
+- [ [#2.2.1](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.1/pom) ]: Code optimization, performance optimization, improved clock callback policy, SPI extension to support third-party service registration and discovery, and load balancing to obtain generic services.
+
+- [ [#2.2.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.2/pom) ]: Solve singleton factory failure problem, optimize thread pool factory, optimize redundancy configuration.
+
+- [ [#2.2.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.3/pom) ]: Change the custom protocol 16 bytes to 8 bytes, optimize the timeout retry mechanism, fix the thread safety problem under high concurrency, and greatly improve the performance.
 ---- 
 
 ### 15. Development Notes
