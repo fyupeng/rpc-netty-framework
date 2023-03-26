@@ -85,25 +85,29 @@
 
 - [ReceiveResponseException](/document/zh/异常解决.md#2-ReceiveResponseException)
 
-- [NotSuchMethodException](/document/zh/异常解决.md#3-NotSuchMethodException)
+- [NotSuchMethodException](/document/zh/异常解决.md#3-RegisterFailedException)
+- 
+- [NotSuchMethodException](/document/zh/异常解决.md#4-NotSuchMethodException)
 
-- [DecoderException](/document/zh/异常解决.md#4-DecoderException)
+- [DecoderException](/document/zh/异常解决.md#5-DecoderException)
 
-- [AnnotationMissingException](/document/zh/异常解决.md#5-AnnotationMissingException)
+- [AnnotationMissingException](/document/zh/异常解决.md#6-InvocationTargetException)
+- 
+- [AnnotationMissingException](/document/zh/异常解决.md#7-AnnotationMissingException)
 
-- [OutOfMemoryError](/document/zh/异常解决.md#6-OutOfMemoryError)
+- [OutOfMemoryError](/document/zh/异常解决.md#8-OutOfMemoryError)
 
-- [RetryTimeoutExcepton](/document/zh/异常解决.md#7-RetryTimeoutExcepton)
+- [RetryTimeoutExcepton](/document/zh/异常解决.md#9-RetryTimeoutExcepton)
 
-- [InvalidSystemClockException](/document/zh/异常解决.md#8-InvalidSystemClockException)
+- [InvalidSystemClockException](/document/zh/异常解决.md#10-InvalidSystemClockException)
 
-- [WorkerIdCantApplyException](/document/zh/异常解决.md#9-WorkerIdCantApplyException)
+- [WorkerIdCantApplyException](/document/zh/异常解决.md#11-WorkerIdCantApplyException)
 
-- [NoSuchMethodError](/document/zh/异常解决.md#10-NoSuchMethodError)
+- [NoSuchMethodError](/document/zh/异常解决.md#12-NoSuchMethodError)
 
-- [AsyncTimeUnreasonableException](/document/zh/异常解决.md#11-AsyncTimeUnreasonableException)
+- [AsyncTimeUnreasonableException](/document/zh/异常解决.md#13-AsyncTimeUnreasonableException)
 
-- [RpcTransmissionException](/document/zh/异常解决.md#12-RpcTransmissionException)
+- [RpcTransmissionException](/document/zh/异常解决.md#14-RpcTransmissionException)
 
 ---- 
 
