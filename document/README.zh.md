@@ -59,237 +59,54 @@
 
 ## 亮点
 
-- [信息摘要算法的应用](/document/zh/亮点.md#1-信息摘要算法的应用)
-- [心跳机制](/document/zh/亮点.md#2-心跳机制)
-- [SPI机制](/document/zh/亮点.md#3-SPI-机制)
-- [IO 异步非阻塞](/document/zh/亮点.md#4-IO-异步非阻塞)
-- [RNF 协议](/document/zh/亮点.md#5-RNF-协议)
-- [场景应用](/document/zh/亮点.md#6-场景应用)
-- [高可用集群](/document/zh/亮点.md#7-高可用集群)
-- [超时重试机制](/document/zh/亮点.md#8-超时重试机制)
-- [雪花算法](/document/zh/亮点.md#9-雪花算法)
-- [高并发](/document/zh/亮点.md#10-高并发)
+[1. 信息摘要算法的应用](/document/zh/亮点.md#1-信息摘要算法的应用)<br/>
+[2. 心跳机制](/document/zh/亮点.md#2-心跳机制)<br/>
+[3. SPI机制](/document/zh/亮点.md#3-SPI-机制)<br/>
+[4. IO 异步非阻塞](/document/zh/亮点.md#4-IO-异步非阻塞)<br/>
+[5. RNF 协议](/document/zh/亮点.md#5-RNF-协议)<br/>
+[6. 场景应用](/document/zh/亮点.md#6-场景应用)<br/>
+[7.高可用集群](/document/zh/亮点.md#7-高可用集群)<br/>
+[8 超时重试机制](/document/zh/亮点.md#8-超时重试机制)<br/>
+[9. 雪花算法](/document/zh/亮点.md#9-雪花算法)<br/>
+[10. 高并发](/document/zh/亮点.md#10-高并发)<br/>
+[11. 健壮性](/document/zh/亮点.md#11-健壮性)
 
 ## 快速开始
 
-[版本 (v1.0.0 - 2.0.9)](/document/zh/快速开始v1.0.0-2.0.9.md)<br/>
-[版本 (v2.1.0 - 2.x.x)](/document/zh/快速开始v2.1.0-2.x.x.md)
+- [1. 版本 (v1.0.0 - 2.0.9)](/document/zh/快速开始v1.0.0-2.0.9.md)<br/>
+- [2. 版本 (v2.1.0 - 2.x.x)](/document/zh/快速开始v2.1.0-2.x.x.md)
 
 ---- 
 
 ---- 
 
-### 12. 异常解决
-- ServiceNotFoundException
+## 异常解决
+- [ServiceNotFoundException](/document/zh/异常解决.md#1-ServiceNotFoundException)
 
-抛出异常`ServiceNotFoundException`
+- [ReceiveResponseException](/document/zh/异常解决.md#2-ReceiveResponseException)
 
-堆栈信息：`service instances size is zero, can't provide service! please start server first!`
+- [NotSuchMethodException](/document/zh/异常解决.md#3-NotSuchMethodException)
 
-正常情况下，一般的错误从报错中可以引导解决。
+- [DecoderException](/document/zh/异常解决.md#4-DecoderException)
 
-解决真实服务不存在的情况，导致负载均衡中使用的策略出现异常的情况，修复后会强制抛出`ServiceNotFoundException`，或许大部分情况是服务未启动。
+- [AnnotationMissingException](/document/zh/异常解决.md#5-AnnotationMissingException)
 
-当然，推荐真实服务应该在服务启动器的内层包中，同层可能会不起作用。
+- [OutOfMemoryError](/document/zh/异常解决.md#6-OutOfMemoryError)
 
-除非使用注解注明包名`@ServiceScan("com.fyupeng")`
+- [RetryTimeoutExcepton](/document/zh/异常解决.md#7-RetryTimeoutExcepton)
 
-其他情况下，如出现服务端无反应，而且服务已经成功注册到注册中心，那么你就得检查下服务端与客户端中接口命名的包名是否一致，如不一致，也是无法被自动发现服务从注册中心发现的，这样最常见的报错也是`service instances size is zero`。
+- [InvalidSystemClockException](/document/zh/异常解决.md#8-InvalidSystemClockException)
 
-- ReceiveResponseException
+- [WorkerIdCantApplyException](/document/zh/异常解决.md#9-WorkerIdCantApplyException)
 
-抛出异常`data in package is modified Exception`
+- [NoSuchMethodError](/document/zh/异常解决.md#10-NoSuchMethodError)
 
-信息摘要算法的实现，使用的是`String`类型的`equals`方法，所以客户端在编写`Service`接口时，如果返回类型不是八大基本类型 + String 类型，也就是复杂对象类型，那么要重写`toString`方法。
+- [AsyncTimeUnreasonableException](/document/zh/异常解决.md#11-AsyncTimeUnreasonableException)
 
-不使用`Object`默认的`toString`方法，因为它默认打印信息为`16`位的内存地址，在做校验中，发送的包和请求获取的包是需要重新实例化的，说白了就是深克隆，**必须** 重写`Object`原有`toString`方法。
-
-为了避免该情况发生，建议所有`PoJo`、`VO`类必须重写`toString`方法，其实就是所有真实业务方法返回类型的实体，必须重写`toString`方法。
-
-如返回体有嵌套复杂对象，所有复杂对象均要重写`toString`只要满足不同对象但内容相同的`toString`方法打印信息一致，数据完整性检测才不会误报。
-
-- RegisterFailedException
-
-抛出异常`Failed to register service Exception`
-
-原因是注册中心没有启动或者注册中心地址端口指定不明，或者因为防火墙问题，导致`Nacos`所在服务器的端口访问失败。
-
-使用该框架时，需注意以下两点：
-
-(1) 支持注册本地地址，如 localhost或127.0.0.1，则注册地址会解析成公网地址；
-
-(2) 支持注册内网地址和外网地址，则地址为对应内网地址或外网地址，不会将其解析；
-
-- NotSuchMethodException
-抛出异常`java.lang.NoSuchMethodError:  org.slf4j.spi.LocationAwareLogger.log`
-
-出现该异常的原因依赖包依赖了`jcl-over-slf4j`的`jar`包，与`springboot-starter-log4j`中提供的`jcl-over-slf4j`重复了，建议手动删除`rpc-core-1.0.0-jar-with-dependenceies.jar`中`org.apache.commons`包
-
-
-- DecoderException
-
-抛出异常：`com.esotericsoftware.kryo.KryoException: Class cannot be created (missing no-arg constructor): java.lang.StackTraceElement`
-
-主要是因为`Kryo`序列化和反序列化是通过无参构造反射创建的，所以使用到`Pojo`类，首先必须对其创建无参构造函数，否则将抛出该异常，并且无法正常执行。
-
-- InvocationTargetException
-
-抛出异常：`Serialization trace:stackTrace (java.lang.reflect.InvocationTargetException)`
-
-主要也是反射调用失败，主要原因还是反射执行目标函数失败，缺少相关函数，可能是构造函数或者其他方法参数问题。
-
-- AnnotationMissingException
-
-抛出异常：`cn.fyupeng.exception.AnnotationMissingException`
-
-由打印信息中可知，追踪`AbstractRpcServer`类信息打印
-```ruby
-cn.fyupeng.net.AbstractRpcServer [main] - mainClassName: jdk.internal.reflect.DirectMethodHandleAccessor
-```
-如果`mainClassName`不为`@ServiceScan`注解标记所在类名，则需要到包`cn.fyupeng.util.ReflectUtil`下修改或重写`getStackTrace`方法，将没有过滤的包名加进过滤列表即可，这可能与`JDK`的版本有关。
-
-- OutOfMemoryError
-
-抛出异常`java.lang.OutOfMemoryError: Requested array size exceeds VM limit`
-
-基本不可能会抛出该错误，由于考虑到并发请求，可能导致，如果请求包分包，会出现很多问题，所以每次请求只发送一个请求包，如在应用场景需要发送大数据，比如发表文章等等，需要手动去重写使用的序列化类的`serialize`方法
-
-例如：KryoSerializer可以重写`serialize`方法中写缓存的大小，默认为`4096`，超出该大小会很容易报数组越界异常问题。
-```java
-/**
- * bufferSize: 缓存大小
- */
-Output output = new Output(byteArrayOutputStream,100000))
-```
-
-- RetryTimeoutExcepton
-
-抛出异常`cn.fyupeng.exception.AnnotationMissingException`
-
-在启用重试机制后，客户端超过重试次数仍未能成功调用服务，即可认为服务不可用，并抛出超时重试异常。
-
-抛出该异常后，将中断该线程，其线程还未执行的任务将终止，默认不会开启重试机制，则不会抛出该异常。
-
-- InvalidSystemClockException
-
-抛出异常`cn.fyupeng.idworker.exception.InvalidSystemClockException`
-
-雪花算法生成中是有很小概率出现时钟回拨，时间回拨需要解决`id`值重复的问题，故而有可能抛出`InvalidSystemClockException`中断异常，逻辑不可处理异常。
-
-- WorkerIdCantApplyException
-
-抛出异常`cn.fyupeng.idworker.exception.WorkerIdCantApplyException`
-
-雪花算法生成中，借助`IdWorker`生成器生成分布式唯一`id`时，是借助了机器码，当机器码数量生成达到最大值将不可再申请，这时将抛出中断异常`WorkerIdCantApplyException`。
-
-- NoSuchMethodError
-
-抛出异常`io.netty.resolver.dns.DnsNameResolverBuilder.socketChannelType(Ljava/lang/Class;)Lio/netty/resolver/dns/DnsNameResolverBuilder`
-
-整合`SpringBoot`时会覆盖`netty`依赖和`lettuce`依赖，`SpringBoot2.1.2`之前，内含`netty`版本较低，而且`RPC`框架支持兼容`netty-all:4.1.52.Final`及以上，推荐使用`SpringBoot2.3.4.RELEASE`即以上可解决该问题。
-
-- AsyncTimeUnreasonableException
-
-抛出异常`cn.fyupeng.exception.AsyncTimeUnreasonableException`
-
-异步时间设置不合理异常，使用注解@Reference时，字段`asyncTime`必须大于`timeout`，这样才能保证超时时间内不会报异常`java.util.concurrent.TimeoutException`，否则最大超时时间将可能不可达并且会打印`warn`日志，导致触发下一次重试，该做法在`2.0.6`和`2.1.8`中将强制抛出异常终止线程。
-
-与此相同用法的有`RetryTimeoutExcepton`和`RpcTransmissionException`，都会终结任务执行。
-
-- RpcTransmissionException
-
-抛出异常`cn.fyupeng.exception.RpcTransmissionException`
-
-数据传输异常，在协议层解码中抛出的异常，一般是因为解析前的实现类与解析后接收实习类`toString()`方法协议不同导致的，也可能是包被劫持并且发生内容篡改。
-
-内部设计采用`toSring()`方法来，而不进行某一种固定的方式来校验，这让校验有更大的不确定性，以此获得更高的传输安全，当然这种设计可以让开发人员自行设计具有安全性的`toString`方法实现，如不实现，将继承`Object`的内存地址toString打印，由于是通过网络序列化传输的，也就是深克隆方式创建类，服务端的原校验码和待校验一般不同，就会抛该异常，一般都需要重新`toString()`方法。
+- [RpcTransmissionException](/document/zh/异常解决.md#12-RpcTransmissionException)
 
 ---- 
 
-### 13. 健壮性（善后工作）
-
-服务端的延时关闭善后工作，能够保证连接的正常关闭。
-
-- TCP 关闭（四次挥手）
-
-```shell
-8191	80.172711	192.168.2.185	192.168.2.185	TCP	44	8085 → 52700 [FIN, ACK] Seq=3290 Ack=3566 Win=2616320 Len=0
-8190	80.172110	192.168.2.185	192.168.2.185	TCP	44	8085 → 52700 [ACK] Seq=3290 Ack=3566 Win=2616320 Len=0
-8191	80.172711	192.168.2.185	192.168.2.185	TCP	44	8085 → 52700 [FIN, ACK] Seq=3290 Ack=3566 Win=2616320 Len=0
-8192	80.172751	192.168.2.185	192.168.2.185	TCP	44	52700 → 8085 [ACK] Seq=3566 Ack=3291 Win=2616320 Len=0
-```
-
-而且不再出现发送`RST`问题，即接收缓冲区中还有数据未接收，出现的原因为`Netty`自身善后工作出现了问题，即在`future.channel().closeFuture().sync()`该操作执行后，线程终止不会往下执行，即时有`finally`依旧如此，于是使用关闭钩子来自动调用完成连接的正常关闭。
-
-- 关闭钩子
-
-```java
-public class ServerShutdownHook {
-
-  private static final ServerShutdownHook shutdownHook = new ServerShutdownHook();
-  private ServiceRegistry serviceRegistry;
-  private RpcServer rpcServer;
-
-  public ServerShutdownHook addRegistry(ServiceRegistry serviceRegistry) {
-    this.serviceRegistry = serviceRegistry;
-    return this;
-  }
-
-  public ServerShutdownHook addServer(RpcServer rpcServer) {
-    this.rpcServer = rpcServer;
-    return this;
-  }
-
-  public static ServerShutdownHook getShutdownHook() {
-    return shutdownHook;
-  }
-  /**
-   * 添加清除钩子
-   * 开启 子线程的方式 帮助 gc
-   */
-  public void addClearAllHook() {
-    log.info("All services will be cancel after shutdown");
-    Runtime.getRuntime().addShutdownHook(new Thread(()->{
-      JRedisHelper.remWorkerId(IpUtils.getPubIpAddr());
-      log.info("the cache for workId has bean cleared successfully");
-      //NacosUtils.clearRegistry();
-      if (serviceRegistry != null) {
-        serviceRegistry.clearRegistry();
-      }
-      //NettyServer.shutdownAll();
-      // 开启子线程（非守护线程） 的方式能够 避免因服务器 关闭导致 关闭钩子 未能正常执行完毕（守护线程）
-      if(rpcServer != null) {
-        rpcServer.shutdown();
-      }
-    }));
-  }
-}
-```
-
-- 使用方法
-
-在服务端或者客户端代理启动时调用
-
-```java
-public class NettyServer extends AbstractRpcServer {
-    
-  @Override
-  public void start() {
-    /**
-     *  封装了 之前 使用的 线程吃 和 任务队列
-     *  实现了 ExecutorService 接口
-     */
-    ServerShutdownHook.getShutdownHook()
-            .addServer(this)
-            .addRegistry(serviceRegistry)
-            .addClearAllHook();
-  }
-}
-```
-
-Netty已经提供了优雅关闭，即`bossGroup.shutdownGracefully().sync()`，可将其用静态方法封装起来，交由钩子调用即可。
-
----- 
 
 ### 14. 版本追踪
 
