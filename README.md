@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/static/v1?label=License&message=Apache2&color=blue)
 
 
-A Distributed Microservice RPC Framework | [Chinese Documentation](/document/README.CN.md) | [SpringBoot conformity RPC](/document/springboot整合rpc-netty-framework.md)
+A Distributed Microservice RPC Framework | [Chinese Documentation](/document/README.zh.md) | [SpringBoot conformity RPC](/document/springboot整合rpc-netty-framework.md)
 
 - [x] Solutions based on `Socket` and `Netty` asynchronous non-blocking communication.
 - [x] is suitable for 'IO' intensive scenario applications based on' Netty'. Although the performance is not as good as the' CPU' intensive scenario applications, concurrency is the best.

@@ -1,4 +1,4 @@
-一个分布式微服务RPC框架 | [返回](/document/README.CN.md)
+一个分布式微服务RPC框架 | [返回](/document/README.zh.md)
 
 ## 使用效果：
 
