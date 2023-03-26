@@ -59,21 +59,21 @@
 
 ## 亮点
 
-- [信息摘要算法的应用](/document/zh/亮点.md#informationDigestAlgorithm)
-- [心跳机制]()
-- [SPI机制]()
-- [IO 异步非阻塞]()
-- [RNF 协议]()
-- [场景应用]()
-- [高可用集群]()
-- [超时重试机制]()
-- [雪花算法]()
-- [高并发](/document/zh/亮点.md#highConcurrency)
+- [信息摘要算法的应用](/document/zh/亮点.md#1-信息摘要算法的应用)
+- [心跳机制](/document/zh/亮点.md#2-心跳机制)
+- [SPI机制](/document/zh/亮点.md#3-SPI-机制)
+- [IO 异步非阻塞](/document/zh/亮点.md#4-IO-异步非阻塞)
+- [RNF 协议](/document/zh/亮点.md#5-RNF-协议)
+- [场景应用](/document/zh/亮点.md#6-场景应用)
+- [高可用集群](/document/zh/亮点.md#7-高可用集群)
+- [超时重试机制](/document/zh/亮点.md#8-超时重试机制)
+- [雪花算法](/document/zh/亮点.md#9-雪花算法)
+- [高并发](/document/zh/亮点.md#10-高并发)
 
 ## 快速开始
 
-v1.0.0 - 2.0.9：
-v2.1.0 - 2.x.x：
+[版本 (v1.0.0 - 2.0.9)](/document/zh/快速开始v1.0.0-2.0.9.md)<br/>
+[版本 (v2.1.0 - 2.x.x)](/document/zh/快速开始v2.1.0-2.x.x.md)
 
 ---- 
 
