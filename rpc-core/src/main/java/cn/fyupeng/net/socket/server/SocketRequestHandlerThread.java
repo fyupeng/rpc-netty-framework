@@ -2,7 +2,7 @@ package cn.fyupeng.net.socket.server;
 
 import cn.fyupeng.exception.UnSupportBodyException;
 import cn.fyupeng.exception.UnrecognizedException;
-import cn.fyupeng.handler.RequestHandler;
+import cn.fyupeng.handler.JdkRequestHandler;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.serializer.CommonSerializer;
@@ -27,11 +27,11 @@ import java.net.Socket;
 public class SocketRequestHandlerThread implements Runnable {
 
     private Socket socket;
-    private RequestHandler requestHandler;
+    private JdkRequestHandler requestHandler;
     private CommonSerializer serializer;
 
     // 在创建 新线程时 进行赋值
-    public SocketRequestHandlerThread(Socket socket, RequestHandler requestHandler, CommonSerializer serializer) {
+    public SocketRequestHandlerThread(Socket socket, JdkRequestHandler requestHandler, CommonSerializer serializer) {
         this.socket = socket;
         this.requestHandler = requestHandler;
         this.serializer = serializer;

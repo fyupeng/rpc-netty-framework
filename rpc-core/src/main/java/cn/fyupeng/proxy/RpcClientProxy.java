@@ -16,13 +16,13 @@ import cn.fyupeng.net.netty.client.UnprocessedResults;
 import cn.fyupeng.net.socket.client.SocketClient;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
+import cn.fyupeng.proxy.factory.javassist.JavassistProxyFactory;
+import cn.fyupeng.proxy.factory.jdk.JdkProxyFactory;
 import cn.fyupeng.util.RpcMessageChecker;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.ServiceLoader;
 import java.util.concurrent.*;
 
@@ -34,7 +34,7 @@ import java.util.concurrent.*;
  * @Version: 1.0
  */
 @Slf4j
-public class RpcClientProxy implements InvocationHandler {
+public class RpcClientProxy {
 
    /**
     *  在调用 invoke 返回数据给 服务器时 连同 主机号和端口号 一起发送
@@ -54,8 +54,8 @@ public class RpcClientProxy implements InvocationHandler {
     */
    private static UnprocessedResults unprocessedRequests = SingleFactory.getInstance(UnprocessedResults.class);
 
-   private static String redisServerWay = "";
-
+   private static JdkProxyFactory jdkProxyFactory = new JdkProxyFactory();
+   private static JavassistProxyFactory javassistProxyFactory = new JavassistProxyFactory();
    static {
       /**
        * 配置 Redis 预加载
@@ -86,7 +86,7 @@ public class RpcClientProxy implements InvocationHandler {
    /**
     * 用于可 超时重试 的动态代理，需要配合 @Reference使用
     * 兼容 阻塞模式
-    * asyncTime 字段 缺省 或者 <= 0 将启用
+    * asyncTime 字段 缺省 或者 <= 0 将启用 阻塞模式
     * 注意，此时 timeout 、 retries 字段将失效
     * @param clazz 获取的服务类
     * @param pareClazz 使用 @Reference 所在类
@@ -95,8 +95,30 @@ public class RpcClientProxy implements InvocationHandler {
     */
    public <T> T getProxy(Class<T> clazz, Class<?> pareClazz){
       this.pareClazz = pareClazz;
-      return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[] {clazz}, this);
+      return jdkProxyFactory.getProxy(clazz, (proxy, method, args) -> invoke0(proxy, method, args));
    }
+
+   /**
+    * 支持 Javassist 动态代理
+    * 兼容 阻塞模式
+    * asyncTime 字段 缺省 或者 <= 0 将启用 阻塞模式
+    * 注意，此时 timeout 、 retries 字段将失效
+    * @param clazz 获取的服务类
+    * @param pareClazz 使用 @Reference 所在类
+    * @param <T>
+    * @return
+    */
+    public <T> T getJavassistProxy(Class<T> clazz, Class<?> pareClazz) {
+       this.pareClazz = pareClazz;
+       // 使用 Javassist 动态生成代理类
+       T javassistProxy = null;
+       try {
+          javassistProxy = javassistProxyFactory.getProxy(clazz, (proxy, method, args) -> invoke0(proxy, method, args));
+       } catch (Throwable e) {
+          log.error("javassist dynamic proxy exception: ", e);
+       }
+       return javassistProxy;
+    }
 
    /**
     * 用于普通动态代理，@Reference 将失效，已过时，不推荐使用
@@ -107,11 +129,14 @@ public class RpcClientProxy implements InvocationHandler {
     */
    @Deprecated
    public <T> T getProxy(Class<T> clazz){
-      return (T) Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[] {clazz},this);
+      return jdkProxyFactory.getProxy(clazz, (proxy, method, args) -> invoke0(proxy, method, args));
    }
 
+    public Object invoke0(Object proxy, Method method, Object[] args) throws Throwable {
+        return invoke(proxy, method, args);
+    }
 
-   @Override
+
    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
       RpcRequest rpcRequest = new RpcRequest.Builder()
               /**
@@ -183,8 +208,6 @@ public class RpcClientProxy implements InvocationHandler {
             break;
          }
       }
-
-
 
 
       /**

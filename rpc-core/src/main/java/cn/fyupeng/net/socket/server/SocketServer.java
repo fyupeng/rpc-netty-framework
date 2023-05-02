@@ -2,7 +2,7 @@ package cn.fyupeng.net.socket.server;
 
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.factory.ThreadPoolFactory;
-import cn.fyupeng.handler.RequestHandler;
+import cn.fyupeng.handler.JdkRequestHandler;
 import cn.fyupeng.hook.ServerShutdownHook;
 import cn.fyupeng.net.AbstractRpcServer;
 import cn.fyupeng.provider.DefaultServiceProvider;
@@ -37,7 +37,7 @@ public class SocketServer extends AbstractRpcServer {
     // 非静态 变量在 用户初始化时 传入参数来决定，不需静态
     private final ExecutorService threadPool;
     private final CommonSerializer serializer;
-    private final RequestHandler requestHandler = new RequestHandler();
+    private final JdkRequestHandler requestHandler = new JdkRequestHandler();
 
     public SocketServer(String host, int port, Integer serializerCode) throws RpcException {
         /**

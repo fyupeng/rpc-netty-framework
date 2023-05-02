@@ -2,7 +2,7 @@ package cn.fyupeng.net.netty.server;
 
 import cn.fyupeng.config.AbstractRedisConfiguration;
 import cn.fyupeng.factory.ThreadPoolFactory;
-import cn.fyupeng.handler.RequestHandler;
+import cn.fyupeng.handler.JdkRequestHandler;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.serializer.CommonSerializer;
@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @Auther: fyp
@@ -40,7 +39,7 @@ public class NettyChannelDispatcher {
     /**
      * 请求处理器
      */
-    private static RequestHandler requestHandler;
+    private static JdkRequestHandler requestHandler;
     /**
      * redisServerWay: 超时重试 Redis 服务端 api 方式
      * redisServerAsync: 超时重试 Redis 服务端 异步开关
@@ -122,7 +121,7 @@ public class NettyChannelDispatcher {
             log.info("read resource from resource path: {}", "resource.properties");
 
         }
-        requestHandler = new RequestHandler();
+        requestHandler = new JdkRequestHandler();
     }
 
     public static void init() {

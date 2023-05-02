@@ -1,5 +1,7 @@
 package cn.fyupeng.pojo;
 
+import java.io.Serializable;
+
 /**
  * @Description: 自定义响应数据结构
  * 				这个类是提供给门户，ios，安卓，微信商城用的
@@ -11,7 +13,7 @@ package cn.fyupeng.pojo;
  * 				502：拦截器拦截到用户token出错
  * 				555：异常抛出信息
  */
-public class BlogJSONResult {
+public class BlogJSONResult implements Serializable {
 
     // 响应业务状态
     private Integer status;

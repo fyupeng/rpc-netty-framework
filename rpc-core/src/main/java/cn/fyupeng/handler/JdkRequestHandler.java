@@ -18,7 +18,7 @@ import java.lang.reflect.Method;
  * @Version: 1.0
  */
 @Slf4j
-public class RequestHandler {
+public class JdkRequestHandler {
 
     private static final ServiceProvider serviceProvider;
 
