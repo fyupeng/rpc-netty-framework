@@ -254,7 +254,7 @@ public abstract class AbstractRedisConfiguration implements Configuration {
                     log.warn("redis auth attribute is missing and start with no auth");
                     // 地址 配置，缺省 约定优于配置
                     try {
-                        String redisServerAddress = configResource.getString(PropertiesConstants.REDIS_SERVER_ADDR);
+                        String redisServerAddress = resource.getString(PropertiesConstants.REDIS_SERVER_ADDR);
                         redisServerAddr = StringUtils.isBlank(redisServerAddress) ? defaultServerAddr : redisServerAddress;
                         String[] hostAndPort = redisServerAddr.split(":");
                         redisServerHost = hostAndPort[0];
@@ -270,7 +270,7 @@ public abstract class AbstractRedisConfiguration implements Configuration {
                 }
                 // 服务端方式 配置，缺省 约定优于配置
                 try {
-                    redisServerWay = configResource.getString(PropertiesConstants.REDIS_SERVER_WAY);
+                    redisServerWay = resource.getString(PropertiesConstants.REDIS_SERVER_WAY);
                 } catch (MissingResourceException redisServerWayException) {
                     redisServerWay = defaultServerWay;
                     log.warn("redis server way attribute is missing");
@@ -278,7 +278,7 @@ public abstract class AbstractRedisConfiguration implements Configuration {
                 }
                 //  客户端方式 配置，缺省 约定优于配置
                 try {
-                    redisClientWay = configResource.getString(PropertiesConstants.REDIS_CLIENT_WAY);
+                    redisClientWay = resource.getString(PropertiesConstants.REDIS_CLIENT_WAY);
                 } catch (MissingResourceException redisClientWayException) {
                     redisClientWay = defaultClientWay;
                     log.warn("redis client way attribute is missing");
@@ -286,7 +286,7 @@ public abstract class AbstractRedisConfiguration implements Configuration {
                 }
                 //  lettuce 阻塞配置，缺省 约定优于配置
                 try {
-                    redisServerAsync = configResource.getString(PropertiesConstants.REDIS_SERVER_ASYNC);
+                    redisServerAsync = resource.getString(PropertiesConstants.REDIS_SERVER_ASYNC);
                 } catch (MissingResourceException redisServerAsyncException) {
                     redisServerAsync = defaultServerAsync;
                     log.warn("redis server async attribute is missing");

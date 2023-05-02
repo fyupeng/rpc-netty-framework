@@ -181,12 +181,11 @@ public class NettyChannelDispatcher {
                         result = serializer.deserialize((byte[]) result, msg.getReturnType());
                     }
                 }
-                log.debug("Previous results:{} ", result);
-                log.info(" >>> Capture reSend package [requestId: {} [method: {}, returnType: {}] <<< ", msg.getRequestId(), msg.getMethodName(), msg.getReturnType());
-
-                writeResultToChannel(ctx, msg, result);
             }
+            log.debug("Previous results:{} ", result);
+            log.info(" >>> Capture reSend package [requestId: {} [method: {}, returnType: {}] <<< ", msg.getRequestId(), msg.getMethodName(), msg.getReturnType());
 
+            writeResultToChannel(ctx, msg, result);
         });
     }
 
