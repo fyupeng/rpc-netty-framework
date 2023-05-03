@@ -1,6 +1,6 @@
 ## Introduction
 
-![Version](https://img.shields.io/static/v1?label=Version&message=2.2.3&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=Version&message=2.2.5&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=Nacos&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=Netty&message=4.1.75.Final&color=blueviolet)
@@ -10,6 +10,7 @@
 A Distributed Microservice RPC Framework | [Chinese Documentation](/document/README.zh.md) | [SpringBoot conformity RPC](/document/springboot整合rpc-netty-framework.md)
 
 - [x] Solutions based on `Socket` and `Netty` asynchronous non-blocking communication.
+- [x] Support ` Jdk ` and ` Javassist ` two dynamic proxy.
 - [x] is suitable for 'IO' intensive scenario applications based on' Netty'. Although the performance is not as good as the' CPU' intensive scenario applications, concurrency is the best.
 - [x] support distributed timeout retry mechanism, idempotent historical result elimination strategy, asynchronous caching for efficient communication.
 - [x] Implementation of `id` generator using `Jedis/Lettuce` two snowflake-based algorithms;
@@ -218,7 +219,7 @@ Import the following `maven` will also import the dependencies of `rpc-common` a
 <dependency>
 <groupId>cn.fyupeng</groupId
 <artifactId>rpc-core</artifactId>
-<version>2.2.3</version>
+<version>2.2.5</version>
 </dependency>
 ```
 Only configuration is supported before ``2.1.0`` version
@@ -368,7 +369,10 @@ public class MyClient {
         RoundRobinLoadBalancer roundRobinLoadBalancer = new RoundRobinLoadBalancer();
         NettyClient nettyClient = new NettyClient(roundRobinLoadBalancer, CommonSerializer.KRYO_SERIALIZER);
 
-        RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
+        // Jdk dynamic proxy
+        HelloService helloService = rpcClientProxy.getProxy(HelloService.class);
+        // Javassist dynamic proxy
+        //HelloService helloService = rpcClientProxy.getJavassistProxy(HelloService.class);
         HelloService helloService = rpcClientProxy.getProxy(HelloService.class);
         String result = helloService.sayHello("hello");
         System.out.println(result);
@@ -900,6 +904,12 @@ Netty already provides a graceful shutdown, `bossGroup.shutdownGracefully().sync
 - [ [#2.2.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.2/pom) ]: Solve singleton factory failure problem, optimize thread pool factory, optimize redundancy configuration.
 
 - [ [#2.2.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.3/pom) ]: Change the custom protocol 16 bytes to 8 bytes, optimize the timeout retry mechanism, fix the thread safety problem under high concurrency, and greatly improve the performance.
+
+- [ [#2.2.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.4/pom) ]：Support javassist dynamic proxy phase (trial), the client proxy provides javassist mode API method, the default choice JDK dynamic proxies, performance is higher than the javassist.
+
+- [ [#2.2.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.5/pom) ]：Repair the empty results abnormal response to a question.
+
+
 ---- 
 
 ### 15. Development Notes

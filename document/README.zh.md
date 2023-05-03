@@ -1,6 +1,6 @@
 ## 介绍
 
-![Version](https://img.shields.io/static/v1?label=Version&message=2.2.3&color=brightgreen)
+![Version](https://img.shields.io/static/v1?label=Version&message=2.2.5&color=brightgreen)
 ![Jdk](https://img.shields.io/static/v1?label=JDK&message=8.0&color=green)
 ![Nacos](https://img.shields.io/static/v1?label=Nacos&message=1.43&color=orange)
 ![Netty](https://img.shields.io/static/v1?label=Netty&message=4.1.75.Final&color=blueviolet)
@@ -9,6 +9,7 @@
 一个分布式微服务RPC框架 | [英文说明文档](/README.md) | [SpringBoot整合RPC](/document/springboot整合rpc-netty-framework.md)
 
 - [x] 基于`Socket`和`Netty`异步非阻塞通信的解决方案；
+- [x] 支持`Jdk`和`Javassist`两种动态代理；
 - [x] 适用基于`Netty`的`IO`密集型场景应用，性能虽不如`CPU`密集型场景应用，但并发性是最好的；
 - [x] 支持分布式超时重试机制、幂等历史结果淘汰策略、异步缓存实现高效通信；
 - [x] 实现采用`Jedis/Lettuce`两种基于雪花算法的`id`生成器;
@@ -174,6 +175,10 @@
 - [ [#2.2.2](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.2/pom) ]：解决单例工厂失效问题、优化线程池工厂、优化冗余配置。
 
 - [ [#2.2.3](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.3/pom) ]：将自定义协议16字节改为8字节、优化超时重试机制，修复高并发下存在的线程安全问题、大幅度提高性能。
+
+- [ [#2.2.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.4/pom) ]：支持javassist动态代理（试行阶段）,客户端代理提供javassist模式的api方法，默认选择jdk动态代理，性能比javassist高。
+
+- [ [#2.2.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.5/pom) ]：修复空结果异常响应问题
 
 
 ---- 
