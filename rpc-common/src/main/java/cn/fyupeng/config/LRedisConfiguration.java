@@ -177,7 +177,7 @@ public class LRedisConfiguration extends AbstractRedisConfiguration {
     }
 
     public void asyncSetRetryRequestResult(String retryRequestId, byte[] result) {
-        log.debug("aSetRetryRequestResult key[{}] - value[{}]",retryRequestId, result);
+        log.debug("SetRetryRequestResult key[{}] - value[{}]",retryRequestId, result);
         strToByteAsyncCommand.set(retryReqIds + ":" + retryRequestId, result, new SetArgs().nx().ex(60));
     }
 

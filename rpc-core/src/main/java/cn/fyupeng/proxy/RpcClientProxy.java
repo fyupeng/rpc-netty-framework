@@ -18,11 +18,15 @@ import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.proxy.factory.javassist.JavassistProxyFactory;
 import cn.fyupeng.proxy.factory.jdk.JdkProxyFactory;
-import cn.fyupeng.util.RpcMessageChecker;
+import cn.fyupeng.protocol.RpcMessageChecker;
+import cn.fyupeng.serializer.HessianSerializer;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.print.attribute.standard.DateTimeAtCompleted;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.ServiceLoader;
 import java.util.concurrent.*;
 
@@ -150,14 +154,23 @@ public class RpcClientProxy {
               .interfaceName(method.getDeclaringClass().getName())
               .methodName(method.getName())
               .parameters(args)
-              .paramTypes(method.getParameterTypes())
-              .returnType(method.getReturnType())
+              //.paramTypes(method.getParameterTypes())
+              .paramTypes(Arrays.stream(method.getParameterTypes()).map(Class::getName).toArray(String[]::new))
+              .returnType(method.getReturnType().getCanonicalName())
               /**这里心跳指定为false，一般由另外其他专门的心跳 handler 来发送
                * 如果发送 并且 hearBeat 为 true，说明触发发送心跳包
                */
               .heartBeat(Boolean.FALSE)
               .reSend(Boolean.FALSE)
               .build();
+
+      HessianSerializer hessianSerializer = new HessianSerializer();
+      byte[] data = hessianSerializer.serialize(rpcRequest);
+      Object obj = hessianSerializer.deserialize(data, RpcRequest.class);
+      System.out.println(obj);
+
+      System.out.println(rpcRequest);
+
       RpcResponse rpcResponse = null;
 
       if (rpcClient instanceof SocketClient) {

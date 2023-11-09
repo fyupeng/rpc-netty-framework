@@ -1,14 +1,12 @@
 package cn.fyupeng.serializer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import cn.fyupeng.enums.SerializerCode;
 import cn.fyupeng.protocol.RpcRequest;
-import com.fasterxml.jackson.databind.util.JSONPObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * @Auther: fyp
@@ -22,7 +20,7 @@ import java.util.Arrays;
  * 也就为空，故 心跳包 JSON 在 服务端 无法正常 解码
  */
 @Slf4j
-public class JsonSerializer implements CommonSerializer {
+public class CJsonSerializer implements CommonSerializer {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,6 +78,6 @@ public class JsonSerializer implements CommonSerializer {
     @Override
     public int getCode() {
         // 获取的是 枚举类中 枚举常量为 JSON 的 SerializerCode 实例
-        return SerializerCode.valueOf(SerializerCode.JSON.name()).getCode();
+        return SerializerCode.valueOf(SerializerCode.CJSON.name()).getCode();
     }
 }

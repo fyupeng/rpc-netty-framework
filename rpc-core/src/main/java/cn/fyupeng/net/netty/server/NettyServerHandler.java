@@ -32,6 +32,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
             log.debug("receive hearBeatPackage from customer...");
             return;
         }
+
         NettyChannelDispatcher.dispatch(ctx, msg);
     }
 

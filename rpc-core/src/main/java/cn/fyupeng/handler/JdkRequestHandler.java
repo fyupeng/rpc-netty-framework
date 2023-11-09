@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 
 /**
@@ -51,7 +52,18 @@ public class JdkRequestHandler {
    private Object invokeTargetMethod(RpcRequest rpcRequest, Object service) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
        log.info("Proxy target Service {}", service);
        log.info("Service: {} is invoking method [{}], paramTypes [{}] ,parameters [{}]", rpcRequest.getInterfaceName(), rpcRequest.getMethodName(), rpcRequest.getParamTypes(), rpcRequest.getParameters());
-       Method method = service.getClass().getMethod(rpcRequest.getMethodName(), rpcRequest.getParamTypes());
+       Class<?>[] paramTypes = Arrays.stream(rpcRequest.getParamTypes())
+               .map(className -> {
+                   try {
+                       return Class.forName(className);
+                   } catch (ClassNotFoundException e) {
+                       // 处理类找不到的异常
+                       log.error("Class parse failed:", e);
+                       throw new RuntimeException(e);
+                   }
+               })
+               .toArray(Class<?>[]::new);
+       Method method = service.getClass().getMethod(rpcRequest.getMethodName(), paramTypes);
        // 调用方法的 返回结果
        return method.invoke(service, rpcRequest.getParameters());
 

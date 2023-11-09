@@ -47,7 +47,7 @@ public class SocketRequestHandlerThread implements Runnable {
             RpcRequest rpcRequest = (RpcRequest) ObjectReader.readObject(ois);
             Object result = requestHandler.handler(rpcRequest);
 
-            String checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
+            byte[] checkCode = DigestUtils.md5(result.toString().getBytes());
             // 返回 处理结果 或 处理中途抛出的 异常
             //oos.writeObject(result);
             if (result instanceof Exception) {

@@ -174,12 +174,22 @@ public class NettyChannelDispatcher {
                 if ("jedis".equals(redisServerWay)) {
                     result = redisServerConfig.getResultForRetryRequestId2String(msg.getRequestId());
                     if (result != null) {
-                        result = JsonUtils.jsonToPojo((String) result,  msg.getReturnType());
+                        try {
+                            result = JsonUtils.jsonToPojo((String) result,  Class.forName(msg.getReturnType()));
+                        } catch (ClassNotFoundException e) {
+                            log.error("store the result in the distributed cache failed:", e);
+                            throw new RuntimeException(e);
+                        }
                     }
                 } else {
                     result = redisServerConfig.getResultForRetryRequestId2Bytes(msg.getRequestId());
                     if (result != null) {
-                        result = serializer.deserialize((byte[]) result, msg.getReturnType());
+                        try {
+                            result = serializer.deserialize((byte[]) result, Class.forName(msg.getReturnType()));
+                        } catch (ClassNotFoundException e) {
+                            log.error("store the result in the distributed cache failed:", e);
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
                 log.debug("Previous results:{} ", result);
@@ -198,15 +208,10 @@ public class NettyChannelDispatcher {
              * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
              * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
              */
-            String checkCode = "";
+            byte[] checkCode;
             // 这里做了 当 data为 null checkCode 为 null，checkCode可作为 客户端的判断 返回值 依据
             if(result != null) {
-                try {
-                    checkCode = new String(DigestUtils.md5(result.toString().getBytes("UTF-8")));
-                } catch (UnsupportedEncodingException e) {
-                    log.error("binary stream conversion failure: ", e);
-                    //e.printStackTrace();
-                }
+                checkCode = DigestUtils.md5(result.toString().getBytes());
             } else {
                 checkCode = null;
             }

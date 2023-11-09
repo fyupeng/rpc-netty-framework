@@ -12,13 +12,16 @@ import cn.fyupeng.serializer.CommonSerializer;
 import cn.fyupeng.util.IpUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.CharsetUtil;
 import lombok.extern.slf4j.Slf4j;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +59,7 @@ public class NettyServer extends AbstractRpcServer {
      */
     static {
         AbstractRedisConfiguration.getServerConfig();
-        /**
+         /**
          * 其他 预加载选项
          */
         NettyChannelDispatcher.init();
@@ -117,9 +120,11 @@ public class NettyServer extends AbstractRpcServer {
                             /**
                              * 读 超时 触发, WriteIdleTime 和 allIdleTime 为 0 表示不做处理
                              */
+                            pipeline.addLast(new DelimiterBasedFrameDecoder(1024, Unpooled.copiedBuffer("\r\n", CharsetUtil.UTF_8)));
                             pipeline.addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS));
-                            pipeline.addLast(new CommonEncoder(serializer));
+                            pipeline.addLast(new CommonEncoder(serializer, "\r\n"));
                             pipeline.addLast(new CommonDecoder());
+                            pipeline.addLast(new ResponseEncoder(serializer));
                             pipeline.addLast(new NettyServerHandler());
                         }
                     });

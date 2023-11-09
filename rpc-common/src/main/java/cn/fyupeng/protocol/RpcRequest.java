@@ -23,9 +23,9 @@ public class RpcRequest implements Serializable {
     // 调用方法的参数
     private Object[] parameters;
     // 调用方法的 参数类型
-    private Class<?>[] paramTypes;
+    private String[] paramTypes;
     // 调用方法的 返回值类型
-    private Class<?> returnType;
+    private String returnType;
     /**
      * 重发标志位 默认为 false 表示非 重发包
      */
@@ -67,8 +67,8 @@ public class RpcRequest implements Serializable {
         private String interfaceName;
         private String methodName;
         private Object[] parameters;
-        private Class<?>[] paramTypes;
-        private Class<?> returnType;
+        private String[] paramTypes;
+        private String returnType;
         private Boolean heartBeat;
         private Boolean reSend;
 
@@ -92,12 +92,12 @@ public class RpcRequest implements Serializable {
             return this;
         }
 
-        public Builder paramTypes(Class< ? > [] paramTypes) {
+        public Builder paramTypes(String[] paramTypes) {
             this.paramTypes = paramTypes;
             return this;
         }
 
-        public Builder returnType(Class< ? > returnType) {
+        public Builder returnType(String returnType) {
             this.returnType = returnType;
             return this;
         }
@@ -134,19 +134,27 @@ public class RpcRequest implements Serializable {
         return methodName;
     }
 
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
+
     public Object[] getParameters() {
         return parameters;
     }
 
-    public Class<?>[] getParamTypes() {
+    public String[] getParamTypes() {
         return paramTypes;
     }
 
-    public Class<?> getReturnType() {
+    public void setParamTypes(String[] paramTypes) {
+        this.paramTypes = paramTypes;
+    }
+
+    public String getReturnType() {
         return returnType;
     }
 
-    public void setReturnType(Class<?> returnType) {
+    public void setReturnType(String returnType) {
         this.returnType = returnType;
     }
 

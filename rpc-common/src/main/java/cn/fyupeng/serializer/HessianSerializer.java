@@ -1,6 +1,7 @@
 package cn.fyupeng.serializer;
 
 import cn.fyupeng.enums.SerializerCode;
+import cn.fyupeng.protocol.RpcRequest;
 import com.caucho.hessian.io.Hessian2Input;
 import com.caucho.hessian.io.Hessian2Output;
 
@@ -52,6 +53,7 @@ public class HessianSerializer implements CommonSerializer {
 
     @Override
     public int getCode() {
-        return SerializerCode.valueOf("HESSIAN").getCode();
+        return SerializerCode.valueOf(SerializerCode.HESSIAN.name()).getCode();
     }
+
 }

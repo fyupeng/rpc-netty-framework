@@ -22,28 +22,34 @@ do
         if buf_len < 16 then return false end
 
         --验证一下identifier这个字段是不是0xCAFEBABE,如果不是的话，认为不是我要解析的packet
-        local v_identifier = buf(0, 4)
-		
-        if (v_identifier:uint() ~= 0xCAFEBABE)
+--         local v_identifier = buf(0, 4)
+        local v_identifier = buf(0, 2)
+
+--         if (v_identifier:uint() ~= 0xCAFEBABE)
+        if (v_identifier:uint() ~= 0xBABE)
         then return false end
 
         --取出其他字段的值
-        local v_packType = buf(4, 4)
+--         local v_packType = buf(4, 4)
+        local v_packType = buf(2, 1)
 		print(v_packType)
 		v_packType = tonumber(tostring(v_packType), 16)
 
 		
-		local v_serializerCode = buf(8, 4)
+-- 		local v_serializerCode = buf(8, 4)
+		local v_serializerCode = buf(3, 1)
 		v_serializerCode = tonumber(tostring(v_serializerCode), 16)
 		
-		local v_length = buf(12, 4)
+-- 		local v_length = buf(12, 4)
+		local v_length = buf(4, 4)
 		v_length = tonumber(tostring(v_length), 16)
 		
 		print("v_length")
 		print(v_length)
 		
-        local v_data = buf(16, v_length)
-        
+--         local v_data = buf(16, v_length)
+        local v_data = buf(8, v_length)
+
         --现在知道是我的协议了，放心大胆添加Packet Details
         local t = root:add(p_RNF,buf)
         --在Packet List窗格的Protocol列可以展示出协议的名称
@@ -73,5 +79,5 @@ do
     
     local tcp_port_table = DissectorTable.get("tcp.port")
     --因为我们的自定义协议的接受端口是1314，所以这里只需要添加到"tcp.port"这个DissectorTable里，并且指定值为1314即可。
-    tcp_port_table:add(8085, p_RNF)
+    tcp_port_table:add(9527, p_RNF)
 end

@@ -23,7 +23,7 @@ public class RpcResponse<T> implements Serializable {
      * 当 data 为 null, checkCode 校验码应规范为 null，checkCode可作为客户端判断返回值依据；
      * 其他情况下，checkCode 才可生成
      */
-    private String checkCode;
+    private byte[] checkCode;
     // 响应状态吗
     private Integer statusCode;
     // 响应状态补充信息
@@ -39,7 +39,7 @@ public class RpcResponse<T> implements Serializable {
         super();
     }
 
-    public static <T> RpcResponse success(String requestId, String checkCode) {
+    public static <T> RpcResponse success(String requestId, byte[] checkCode) {
         RpcResponse<T> response = new RpcResponse<>();
         response.setStatusCode(ResponseCode.SUCCESS.getCode());
         response.setRequestId(requestId);
@@ -48,7 +48,7 @@ public class RpcResponse<T> implements Serializable {
         return response;
     }
 
-    public static <T> RpcResponse success(T data, String requestId, String checkCode) {
+    public static <T> RpcResponse success(T data, String requestId, byte[] checkCode) {
         RpcResponse<T> response = new RpcResponse<>();
         response.setStatusCode(ResponseCode.SUCCESS.getCode());
         response.setRequestId(requestId);
@@ -74,11 +74,11 @@ public class RpcResponse<T> implements Serializable {
         this.requestId = requestId;
     }
 
-    public String getCheckCode() {
+    public byte[] getCheckCode() {
         return checkCode;
     }
 
-    public void setCheckCode(String checkCode) {
+    public void setCheckCode(byte[] checkCode) {
         this.checkCode = checkCode;
     }
 

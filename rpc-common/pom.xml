@@ -16,6 +16,12 @@
     </properties>
 
     <dependencies>
+        <!--   String 工具类     -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+        </dependency>
         <!-- Cglib 动态代理 -->
         <dependency>
             <groupId>cglib</groupId>
@@ -71,6 +77,12 @@
             <artifactId>jackson-core</artifactId>
             <version>2.9.0</version>
         </dependency>
+        <!-- Fury 序列化 工具 -->
+        <dependency>
+            <groupId>org.furyio</groupId>
+            <artifactId>fury-core</artifactId>
+            <version>0.1.0</version>
+        </dependency>
         <!-- kryo 序列化 工具 -->
         <dependency>
             <groupId>com.esotericsoftware</groupId>
@@ -81,7 +93,7 @@
         <dependency>
             <groupId>com.caucho</groupId>
             <artifactId>hessian</artifactId>
-            <version>4.0.38</version>
+            <version>4.0.66</version>
         </dependency>
         <!-- 与 logbakc 整合 -->
         <dependency>

@@ -8,6 +8,9 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import lombok.extern.slf4j.Slf4j;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+
 /**
  * @Auther: fyp
  * @Date: 2022/3/24
@@ -23,9 +26,11 @@ public class CommonEncoder extends MessageToByteEncoder {
     private static final short MAGIC_NUMBER = (short) 0xBABE;
 
     private final CommonSerializer serializer;
+    private final String delimiter;
 
-    public CommonEncoder(CommonSerializer serializer) {
+    public CommonEncoder(CommonSerializer serializer, String delimiter) {
         this.serializer = serializer;
+        this.delimiter = delimiter;
     }
 
     /**
@@ -50,6 +55,11 @@ public class CommonEncoder extends MessageToByteEncoder {
      *
      *                            ↓  改良  ↓
      *
+     * 自定义对象头 协议 8 字节
+     * 2 字节 魔数
+     * 1 字节 协议包类型
+     * 1 字节 序列化类型
+     * 4 字节 数据长度
      * +---------------+---------------+-----------------+-------------+
      * | Magic Number  | Package Type  | Serializer Type | Data Length |
      * | 2 bytes       | 1 bytes       | 1 bytes         | 4 bytes     |
@@ -72,5 +82,6 @@ public class CommonEncoder extends MessageToByteEncoder {
         out.writeInt(bytes.length); // 写进的4个字节
         log.debug("encode object length [{}] bytes", length);
         out.writeBytes(bytes); // 写进的 对象内容，二进制形式
+        out.writeBytes(this.delimiter.getBytes(StandardCharsets.UTF_8));
     }
 }

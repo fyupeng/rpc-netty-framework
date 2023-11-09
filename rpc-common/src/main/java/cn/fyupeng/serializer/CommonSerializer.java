@@ -13,6 +13,13 @@ public interface CommonSerializer {
     Integer KRYO_SERIALIZER = 0;
     Integer JSON_SERIALIZER = 1;
     Integer HESSIAN_SERIALIZER = 2;
+    Integer JFURY_SERIALIZER = 3;
+    Integer GFURY_SERIALIZER = 4;
+    Integer XFURY_SERIALIZER = 5;
+    // 处理请求包 - Golang（客户端） -> Java（服务端） 跨协议 JSON 序列化、Java（服务端） -> Golang（客户端） 跨协议 JSON 反序列化
+    Integer CJSON_SERIALIZER = 6;
+    // 处理响应包 - Java（客户端） -> Golang（服务端） 跨协议 JSON 反序列化、Golang（服务端） -> Java（客户端） 跨协议 JSON 序列化
+    Integer SJSON_SERIALIZER = 7;
     Integer DEFAULT_SERIALIZER = KRYO_SERIALIZER;
 
     byte[] serialize(Object obj);
@@ -37,6 +44,14 @@ public interface CommonSerializer {
                 return new JsonSerializer();
             case 2:
                 return new HessianSerializer();
+            case 3:
+                return new FurySerializer(JFURY_SERIALIZER);
+            case 4:
+                return new FurySerializer(GFURY_SERIALIZER);
+            case 5:
+                return new FurySerializer(XFURY_SERIALIZER);
+            case 6:
+                return new CJsonSerializer();
             default:
                 return null;
         }
