@@ -69,18 +69,19 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        if (evt instanceof IdleStateEvent) {
-            IdleState state = ((IdleStateEvent) evt).state();
-            // 客户端 没有发送 数据了，设置 写超时总会被 触发，从而 发送心跳包 给 服务端
-            if (state == IdleState.WRITER_IDLE) {
-                log.debug("Send heartbeat packets to server[{}]", ctx.channel().remoteAddress());
-                NettyChannelProvider.get((InetSocketAddress) ctx.channel().remoteAddress(), CommonSerializer.getByCode(CommonSerializer.JSON_SERIALIZER));
-                RpcRequest rpcRequest = new RpcRequest();
-                rpcRequest.setHeartBeat(Boolean.TRUE);
-                ctx.writeAndFlush(rpcRequest).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
-            }
-        } else {
-            super.userEventTriggered(ctx, evt);
-        }
+        super.userEventTriggered(ctx, evt);
+        //if (evt instanceof IdleStateEvent) {
+        //    IdleState state = ((IdleStateEvent) evt).state();
+        //    // 客户端 没有发送 数据了，设置 写超时总会被 触发，从而 发送心跳包 给 服务端
+        //    if (state == IdleState.WRITER_IDLE) {
+        //        log.debug("Send heartbeat packets to server[{}]", ctx.channel().remoteAddress());
+        //        NettyChannelProvider.get((InetSocketAddress) ctx.channel().remoteAddress(), CommonSerializer.getByCode(CommonSerializer.JSON_SERIALIZER));
+        //        RpcRequest rpcRequest = new RpcRequest();
+        //        rpcRequest.setHeartBeat(Boolean.TRUE);
+        //        ctx.writeAndFlush(rpcRequest).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+        //    }
+        //} else {
+        //    super.userEventTriggered(ctx, evt);
+        //}
     }
 }

@@ -121,10 +121,10 @@ public class NettyServer extends AbstractRpcServer {
                              * 读 超时 触发, WriteIdleTime 和 allIdleTime 为 0 表示不做处理
                              */
                             pipeline.addLast(new DelimiterBasedFrameDecoder(1024, Unpooled.copiedBuffer("\r\n", CharsetUtil.UTF_8)));
-                            pipeline.addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS));
+                            //pipeline.addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS));
                             pipeline.addLast(new CommonEncoder(serializer, "\r\n"));
                             pipeline.addLast(new CommonDecoder());
-                            pipeline.addLast(new ResponseEncoder(serializer));
+                            pipeline.addLast(new ResponseParser(serializer));
                             pipeline.addLast(new NettyServerHandler());
                         }
                     });

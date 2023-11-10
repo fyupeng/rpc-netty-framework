@@ -2,6 +2,7 @@ package cn.fyupeng.net.netty.client;
 
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.serializer.CommonSerializer;
+import cn.hutool.core.bean.BeanUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import lombok.extern.slf4j.Slf4j;
@@ -18,24 +19,27 @@ import java.util.List;
  * @Version: 1.0
  */
 @Slf4j
-public class RequestEncoder extends MessageToMessageEncoder<RpcRequest> {
+public class RequestParser extends MessageToMessageEncoder<RpcRequest> {
 
     private CommonSerializer serializer;
 
-    public RequestEncoder(CommonSerializer serializer) {
+    public RequestParser(CommonSerializer serializer) {
         this.serializer = serializer;
     }
 
     @Override
     protected void encode(ChannelHandlerContext channelHandlerContext, RpcRequest rpcRequest, List<Object> list) throws Exception {
+        // 采用 拷贝的方式 而不在原来的 rpcRequest 进行修改，避免内存修改导致 重试机制 多次编译
+        System.out.println("rpcRequest");
+        System.out.println(rpcRequest);
+        // 必须  实现 rpcRequest 所有 get 和 set 方法
+        RpcRequest req = BeanUtil.toBean(rpcRequest, RpcRequest.class);
 
-        rpcRequest.setParamTypes(adaptParamTypes(rpcRequest.getParamTypes()));
-        rpcRequest.setReturnType(adaptParamTypes(rpcRequest.getReturnType()));
-        rpcRequest.setMethodName(adaptMethodName(rpcRequest.getMethodName()));
+        req.setParamTypes(adaptParamTypes(rpcRequest.getParamTypes()));
+        req.setReturnType(adaptParamTypes(rpcRequest.getReturnType()));
+        req.setMethodName(adaptMethodName(rpcRequest.getMethodName()));
 
-        list.add(rpcRequest);
-        channelHandlerContext.write(rpcRequest);
-
+        list.add(req);
     }
 
     private String[] adaptParamTypes(String[] paramTypes) throws ClassNotFoundException {

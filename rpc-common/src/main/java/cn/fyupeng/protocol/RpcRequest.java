@@ -122,6 +122,10 @@ public class RpcRequest implements Serializable {
         return requestId;
     }
 
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
     public String getInterfaceName() {
         return interfaceName;
     }
@@ -140,6 +144,10 @@ public class RpcRequest implements Serializable {
 
     public Object[] getParameters() {
         return parameters;
+    }
+
+    public void setParameters(Object[] parameters) {
+        this.parameters = parameters;
     }
 
     public String[] getParamTypes() {

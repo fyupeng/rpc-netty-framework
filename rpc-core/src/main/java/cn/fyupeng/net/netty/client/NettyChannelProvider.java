@@ -4,7 +4,6 @@ import cn.fyupeng.codec.CommonDecoder;
 import cn.fyupeng.codec.CommonEncoder;
 import cn.fyupeng.exception.ConnectFailedException;
 import cn.fyupeng.exception.RpcException;
-import cn.fyupeng.net.netty.server.ResponseEncoder;
 import cn.fyupeng.serializer.CommonSerializer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
@@ -66,10 +65,10 @@ public class  NettyChannelProvider {
             protected void initChannel(SocketChannel ch) throws Exception {
                     ChannelPipeline pipeline = ch.pipeline();
                     pipeline.addLast(new DelimiterBasedFrameDecoder(1024, Unpooled.copiedBuffer("\r\n", CharsetUtil.UTF_8))).
-                            addLast(new IdleStateHandler(3, 5, 7, TimeUnit.SECONDS))
-                            .addLast(new CommonDecoder())
+                            //addLast(new IdleStateHandler(3, 5, 7, TimeUnit.SECONDS))
+                            addLast(new CommonDecoder())
                             .addLast(new CommonEncoder(serializer, "\r\n"))
-                            .addLast(new RequestEncoder(serializer))
+                            .addLast(new RequestParser(serializer))
                             .addLast(new NettyClientHandler());
                 /**
                  * 读 channel --> 解码 --> (注册检测心跳包，后面自己会检测) --> 处理客户端 --> 编码 --> 写 channel

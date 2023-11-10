@@ -52,6 +52,8 @@ public interface CommonSerializer {
                 return new FurySerializer(XFURY_SERIALIZER);
             case 6:
                 return new CJsonSerializer();
+            case 7:
+                return new SJsonSerializer();
             default:
                 return null;
         }

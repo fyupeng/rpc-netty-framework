@@ -29,6 +29,7 @@ public class CommonDecoder extends ReplayingDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws UnrecognizedException {
+
         short magic = in.readShort(); // 读取 2 字节 魔数
         if (magic != MAGIC_NUMBER) {
             log.error("Unrecognized protocol package: {}", Integer.toHexString(magic));
