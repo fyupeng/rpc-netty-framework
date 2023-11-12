@@ -38,7 +38,7 @@ public class NettyClientHandler extends SimpleChannelInboundHandler<RpcResponse>
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcResponse msg) throws Exception {
         try {
-            log.info(String.format("customer has received response package {requestId: %s, message: %s, statusCode: %s ]}", msg.getRequestId(), msg.getMessage(), msg.getStatusCode()));
+            log.info(String.format("customer has received response package {requestId: %s, message: %s, statusCode: %s , checkCode: %s]}", msg.getRequestId(), msg.getMessage(), msg.getStatusCode(), msg.getCheckCode()));
             /**
              * 1. 取出 缓存在 AttributeKey 中 常量池ConstantPool 的 ConcurrentMap<String, RpcResponse>
              *  key 为 "rpcResponse"的 AttributeKey<RpcResponse>

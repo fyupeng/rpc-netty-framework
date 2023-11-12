@@ -3,13 +3,12 @@ package cn.fyupeng.protocol;
 import cn.fyupeng.enums.ResponseCode;
 import cn.fyupeng.exception.ReceiveResponseException;
 import cn.fyupeng.exception.RpcException;
-import cn.fyupeng.protocol.RpcRequest;
-import cn.fyupeng.protocol.RpcResponse;
+import cn.fyupeng.serializer.CommonSerializer;
+import cn.fyupeng.util.AesEncoder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 
-import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * @Auther: fyp
@@ -20,6 +19,8 @@ import java.util.Arrays;
  */
 @Slf4j
 public class RpcMessageChecker {
+
+    private static final CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.JSON_SERIALIZER);
 
     public RpcMessageChecker() {
     }
@@ -61,19 +62,20 @@ public class RpcMessageChecker {
         /**
          * 校验包 是否被人 修改过
          */
-        byte[] checkCode;
+        String checkCode;
         // data 为空 校验码为 null
         if(rpcResponse.getData() == null) {
             checkCode = null;
             // data 有值 设置 校验码
         } else {
-            checkCode = DigestUtils.md5(rpcResponse.getData().toString().getBytes());
+            byte[] checkData = serializer.serialize(rpcResponse.getData());
+            checkCode = AesEncoder.encrypt(new String(checkData));
         }
         // data 应为 null
         if(rpcResponse.getCheckCode() == null) {
             // 服务端校验码 与 客户端校验码 不一致
             // checkCode 由 data 计算而来，发送前 校验码为 null，此时不一致，说明 data 数据被修改
-            if(checkCode != rpcResponse.getCheckCode()) {
+            if(!Objects.equals(checkCode, rpcResponse.getCheckCode())) {
                 log.error("data in package is modified， data: {}", rpcResponse.getData());
                 log.error("detail modification information: {}，the modification information has been filtered, and such messages will not be received and consumed！", rpcResponse.getData().toString());
                 return false;
@@ -83,7 +85,7 @@ public class RpcMessageChecker {
             // 有 返回值的 情况
         } else {
             // 计算两者的 校验码，不一致则 说明 data 数据被 修改
-            if (!Arrays.equals(checkCode, rpcResponse.getCheckCode())){
+            if (!StringUtils.equals(removeSpecialChars(checkCode), removeSpecialChars(rpcResponse.getCheckCode()))){
                 log.error("data in package is modified， data:{}",rpcResponse.getData());
                 log.error("detail modification information: {}，the modification information has been filtered, and such messages will not be received and consumed！", rpcResponse.getData().toString());
                 return false;
@@ -127,19 +129,20 @@ public class RpcMessageChecker {
         /**
          * 校验包 是否被人 修改过
          */
-        byte[] checkCode;
+        String checkCode;
         // data 为空 校验码为 null
         if(rpcResponse.getData() == null) {
             checkCode = null;
         // data 有值 设置 校验码
         } else {
-            checkCode = DigestUtils.md5(rpcResponse.getData().toString().getBytes());
+            byte[] checkData = serializer.serialize(rpcResponse.getData());
+            checkCode = AesEncoder.encrypt(new String(checkData));
         }
         // data 应为 null
         if(rpcResponse.getCheckCode() == null) {
             // 服务端校验码 与 客户端校验码 不一致
             // checkCode 由 data 计算而来，发送前 校验码为 null，此时不一致，说明 data 数据被修改
-            if(!Arrays.equals(checkCode, rpcResponse.getCheckCode())) {
+            if(!Objects.equals(checkCode, rpcResponse.getCheckCode())) {
                 log.error("data in package is modified， data: {}", rpcResponse.getData());
                 log.error("detail modification information: {}，the modification information has been filtered, and such messages will not be received and consumed！", rpcResponse.getData().toString());
                 throw new ReceiveResponseException("data in package is modified Exception");
@@ -148,7 +151,7 @@ public class RpcMessageChecker {
         // 有 返回值的 情况
         } else {
             // 计算两者的 校验码，不一致则 说明 data 数据被 修改
-            if (!checkCode.equals(rpcResponse.getCheckCode())) {
+            if(!StringUtils.equals(removeSpecialChars(checkCode), removeSpecialChars(rpcResponse.getCheckCode()))) {
                 log.error("data in package is modified， data:{}",rpcResponse.getData());
                 log.error("detail modification information: {}，the modification information has been filtered, and such messages will not be received and consumed！", rpcResponse.getData().toString());
                 throw new ReceiveResponseException("data in package is modified Exception");
@@ -156,6 +159,11 @@ public class RpcMessageChecker {
         }
 
         log.debug("Packet verification succeeded!");
+    }
+
+    private static String removeSpecialChars(String input) {
+        // 使用 StringUtils.replaceChars 方法去除指定的特殊字符
+        return StringUtils.replaceChars(input, "_-+/", "");
     }
 
 }

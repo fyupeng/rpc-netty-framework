@@ -6,6 +6,7 @@ import cn.fyupeng.handler.JdkRequestHandler;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.serializer.CommonSerializer;
+import cn.fyupeng.util.AesEncoder;
 import cn.fyupeng.util.JsonUtils;
 import cn.fyupeng.constant.PropertiesConstants;
 import com.alibaba.nacos.common.utils.StringUtils;
@@ -36,6 +37,8 @@ public class NettyChannelDispatcher {
      * Lettuce 分布式缓存采用 HESSIAN 序列化方式
      */
     private static CommonSerializer serializer = CommonSerializer.getByCode(CommonSerializer.HESSIAN_SERIALIZER);
+
+    private static final CommonSerializer jsonSerializer = CommonSerializer.getByCode(CommonSerializer.JSON_SERIALIZER);
     /**
      * 请求处理器
      */
@@ -208,10 +211,11 @@ public class NettyChannelDispatcher {
              * 1. 当数据无返回值时，保证 checkCode 与 result 可以检验，客户端 也要判断 result 为 null 时 checkCode 是否也为 null，才能认为非他人修改
              * 2. 当数据有返回值时，校验 checkCode 与 result 的 md5 码 是否相同
              */
-            byte[] checkCode;
+            String checkCode;
             // 这里做了 当 data为 null checkCode 为 null，checkCode可作为 客户端的判断 返回值 依据
             if(result != null) {
-                checkCode = DigestUtils.md5(result.toString().getBytes());
+                byte[] checkData = jsonSerializer.serialize(result);
+                checkCode = AesEncoder.encrypt(new String(checkData));
             } else {
                 checkCode = null;
             }

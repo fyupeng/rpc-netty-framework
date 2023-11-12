@@ -23,13 +23,15 @@ public class RpcResponse<T> implements Serializable {
      * 当 data 为 null, checkCode 校验码应规范为 null，checkCode可作为客户端判断返回值依据；
      * 其他情况下，checkCode 才可生成
      */
-    private byte[] checkCode;
+    private String checkCode;
     // 响应状态吗
     private Integer statusCode;
     // 响应状态补充信息
     private String message;
     // 响应数据
     private T data;
+
+    private String dataType;
 
     /**
      * 没有空 构造方法 会导致 反序列化 失败
@@ -39,7 +41,7 @@ public class RpcResponse<T> implements Serializable {
         super();
     }
 
-    public static <T> RpcResponse success(String requestId, byte[] checkCode) {
+    public static <T> RpcResponse success(String requestId, String checkCode) {
         RpcResponse<T> response = new RpcResponse<>();
         response.setStatusCode(ResponseCode.SUCCESS.getCode());
         response.setRequestId(requestId);
@@ -48,7 +50,7 @@ public class RpcResponse<T> implements Serializable {
         return response;
     }
 
-    public static <T> RpcResponse success(T data, String requestId, byte[] checkCode) {
+    public static <T> RpcResponse success(T data, String requestId, String checkCode) {
         RpcResponse<T> response = new RpcResponse<>();
         response.setStatusCode(ResponseCode.SUCCESS.getCode());
         response.setRequestId(requestId);
@@ -74,11 +76,11 @@ public class RpcResponse<T> implements Serializable {
         this.requestId = requestId;
     }
 
-    public byte[] getCheckCode() {
+    public String getCheckCode() {
         return checkCode;
     }
 
-    public void setCheckCode(byte[] checkCode) {
+    public void setCheckCode(String checkCode) {
         this.checkCode = checkCode;
     }
 
@@ -106,13 +108,23 @@ public class RpcResponse<T> implements Serializable {
         this.data = data;
     }
 
+    public String getDataType() {
+        return dataType;
+    }
+
+    public void setDataType(String dataType) {
+        this.dataType = dataType;
+    }
+
     @Override
     public String toString() {
         return "RpcResponse{" +
                 "requestId='" + requestId + '\'' +
+                ", checkCode='" + checkCode + '\'' +
                 ", statusCode=" + statusCode +
                 ", message='" + message + '\'' +
                 ", data=" + data +
+                ", dataType='" + dataType + '\'' +
                 '}';
     }
 }

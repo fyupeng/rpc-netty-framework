@@ -19,7 +19,7 @@ import java.util.Base64;
 public class TestResponse {
     public static void main(String[] args) throws JsonProcessingException {
         Student student = new Student(123, "小明", true);
-        RpcResponse data = RpcResponse.success(student, "1235", new byte[]{1,2,3,4});
+        RpcResponse data = RpcResponse.success(student, "1235", "VYGThW0MXPf4v88IKP/o4g==");
         ObjectMapper objectMapper = new ObjectMapper();
         byte[] bytes = objectMapper.writeValueAsBytes(data);
         System.out.println(new String(bytes));

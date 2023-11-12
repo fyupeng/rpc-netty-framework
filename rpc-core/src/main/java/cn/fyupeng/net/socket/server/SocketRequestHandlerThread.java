@@ -6,6 +6,7 @@ import cn.fyupeng.handler.JdkRequestHandler;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.serializer.CommonSerializer;
+import cn.fyupeng.util.AesEncoder;
 import cn.fyupeng.util.ObjectReader;
 import cn.fyupeng.util.ObjectWriter;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class SocketRequestHandlerThread implements Runnable {
     private Socket socket;
     private JdkRequestHandler requestHandler;
     private CommonSerializer serializer;
+    private static final CommonSerializer jsonSerializer = CommonSerializer.getByCode(CommonSerializer.JSON_SERIALIZER);
 
     // 在创建 新线程时 进行赋值
     public SocketRequestHandlerThread(Socket socket, JdkRequestHandler requestHandler, CommonSerializer serializer) {
@@ -47,7 +49,8 @@ public class SocketRequestHandlerThread implements Runnable {
             RpcRequest rpcRequest = (RpcRequest) ObjectReader.readObject(ois);
             Object result = requestHandler.handler(rpcRequest);
 
-            byte[] checkCode = DigestUtils.md5(result.toString().getBytes());
+            byte[] checkData = jsonSerializer.serialize(result);
+            String checkCode = AesEncoder.encrypt(new String(checkData));
             // 返回 处理结果 或 处理中途抛出的 异常
             //oos.writeObject(result);
             if (result instanceof Exception) {

@@ -23,7 +23,7 @@ import java.util.concurrent.ExecutorService;
 public class Client {
     private static RoundRobinLoadBalancer randomLoadBalancer = new RoundRobinLoadBalancer();
     //private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.HESSIAN_SERIALIZER);
-    private static NettyClient nettyClient = new NettyClient("192.168.123.191", 9527, CommonSerializer.CJSON_SERIALIZER);
+    private static NettyClient nettyClient = new NettyClient("192.168.43.33", 9527, CommonSerializer.CJSON_SERIALIZER);
     private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
     @Reference(group = "1.0.1",timeout = 10000, asyncTime = -1)
     private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
