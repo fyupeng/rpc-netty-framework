@@ -22,10 +22,13 @@ import java.util.concurrent.ExecutorService;
 @Slf4j
 public class Client {
     private static RoundRobinLoadBalancer randomLoadBalancer = new RoundRobinLoadBalancer();
+    // 使用 注册中心 方式
     //private static NettyClient nettyClient = new NettyClient(randomLoadBalancer, CommonSerializer.HESSIAN_SERIALIZER);
-    private static NettyClient nettyClient = new NettyClient("192.168.43.33", 9527, CommonSerializer.CJSON_SERIALIZER);
+    // 使用 直连 方式
+    private static NettyClient nettyClient = new NettyClient("192.168.5.191", 9527, CommonSerializer.CJSON_SERIALIZER);
     private static RpcClientProxy rpcClientProxy = new RpcClientProxy(nettyClient);
-    @Reference(group = "1.0.1",timeout = 10000, asyncTime = -1)
+    //@Reference(group = "1.0.1",timeout = 10000, asyncTime = -1)
+    @Reference(group = "1.0.1",timeout = 10000)
     private static HelloWorldService service = rpcClientProxy.getProxy(HelloWorldService.class, Client.class);
     //private static HelloWorldService service = rpcClientProxy.getJavassistProxy(HelloWorldService.class, Client.class);
 
@@ -36,7 +39,8 @@ public class Client {
 
 
         //long begin = System.currentTimeMillis();
-        service.sayHello("this java request");
+        String result = service.sayHello("this java request");
+        System.out.println(result);
         for (int i = 0; i < 1; i++) {
             //pool.execute(() -> {
             Thread.sleep(2000);

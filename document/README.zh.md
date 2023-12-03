@@ -9,6 +9,7 @@
 一个分布式微服务RPC框架 | [英文说明文档](/README.md) | [SpringBoot整合RPC](/document/springboot整合rpc-netty-framework.md)
 
 - [x] 基于`Socket`和`Netty`异步非阻塞通信的解决方案；
+- [x] 支持跨语言协议通信，包括`GoLang`等其他语言。
 - [x] 支持`Jdk`和`Javassist`两种动态代理；
 - [x] 适用基于`Netty`的`IO`密集型场景应用，性能虽不如`CPU`密集型场景应用，但并发性是最好的；
 - [x] 支持分布式超时重试机制、幂等历史结果淘汰策略、异步缓存实现高效通信；

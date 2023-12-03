@@ -10,6 +10,7 @@
 A Distributed Microservice RPC Framework | [Chinese Documentation](/document/README.zh.md) | [SpringBoot conformity RPC](/document/springboot整合rpc-netty-framework.md)
 
 - [x] Solutions based on `Socket` and `Netty` asynchronous non-blocking communication.
+- [x] Cross-language protocol communication is supported, including other languages such as `GoLang`.
 - [x] Support ` Jdk ` and ` Javassist ` two dynamic proxy.
 - [x] is suitable for 'IO' intensive scenario applications based on' Netty'. Although the performance is not as good as the' CPU' intensive scenario applications, concurrency is the best.
 - [x] support distributed timeout retry mechanism, idempotent historical result elimination strategy, asynchronous caching for efficient communication.
@@ -895,7 +896,7 @@ Netty already provides a graceful shutdown, `bossGroup.shutdownGracefully().sync
 
 - [ [#2.1.10](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.1.10/pom) ]: Repair the client/server failed to normally closed questions, lead to end connection abort, Consolidate a unified pool of business threads for later cleanup.
 
-#### 2.2 version
+#### version 2.2
 
 - [ [#2.2.0](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.0/pom) ]: supports the extension of 'Bean' custom instantiation, meets the requirements of 'Spring' annotation dependency injection and annotation section execution, corrects the annotation package name 'annotation', solves the failure to manually clear the memory of the service instance when the service is logged out, improves the performance slightly, and maintains the instability of the polling policy under concurrency.
 

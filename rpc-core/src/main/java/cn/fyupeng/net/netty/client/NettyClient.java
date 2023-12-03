@@ -8,6 +8,7 @@ import cn.fyupeng.net.RpcClient;
 import cn.fyupeng.protocol.RpcRequest;
 import cn.fyupeng.protocol.RpcResponse;
 import cn.fyupeng.serializer.CommonSerializer;
+import com.alibaba.nacos.common.utils.StringUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -104,7 +105,7 @@ public class NettyClient implements RpcClient {
             String serviceName = rpcRequest.getInterfaceName();
             InetSocketAddress address = null;
             String group = rpcRequest.getGroup();
-            if (group != null) {
+            if (StringUtils.isNotBlank(group)) {
                 address = serviceDiscovery.lookupService(serviceName, group);
             } else {
                 address = serviceDiscovery.lookupService(serviceName);

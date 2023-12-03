@@ -13,12 +13,10 @@ import com.alibaba.nacos.common.utils.StringUtils;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
