@@ -9,6 +9,10 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <name>rpc-common</name>
+    <url>https://github.com/fyupeng/rpc-netty-framework</url>
+    <description>基于Netty分布式微服务的RPC框架-公共模块</description>
+
     <artifactId>rpc-common</artifactId>
 
     <properties>
