@@ -179,7 +179,11 @@
 
 - [ [#2.2.4](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.4/pom) ]：支持javassist动态代理（试行阶段）,客户端代理提供javassist模式的api方法，默认选择jdk动态代理，性能比javassist高。
 
-- [ [#2.2.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.5/pom) ]：修复空结果异常响应问题
+- [ [#2.2.5](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.5/pom) ]：修复空结果异常响应问题。
+
+- [ [#2.2.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.6/pom) ]：修复服务注册发布时解析地址异常问题。
+
+- [ [#2.2.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.7/pom) ]：支持配置Netty底层帧长度灵活调整。
 
 
 ---- 
