@@ -3,6 +3,7 @@ package cn.fyupeng.net.netty.server;
 import cn.fyupeng.codec.CommonDecoder;
 import cn.fyupeng.codec.CommonEncoder;
 import cn.fyupeng.config.AbstractRedisConfiguration;
+import cn.fyupeng.config.NettyConfiguration;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.hook.ServerShutdownHook;
 import cn.fyupeng.net.AbstractRpcServer;
@@ -120,7 +121,7 @@ public class NettyServer extends AbstractRpcServer {
                             /**
                              * 读 超时 触发, WriteIdleTime 和 allIdleTime 为 0 表示不做处理
                              */
-                            pipeline.addLast(new DelimiterBasedFrameDecoder(1024, Unpooled.copiedBuffer("\r\n", CharsetUtil.UTF_8)));
+                            pipeline.addLast(new DelimiterBasedFrameDecoder(NettyConfiguration.getNettyFrameLength(), Unpooled.copiedBuffer("\r\n", CharsetUtil.UTF_8)));
                             //pipeline.addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS));
                             pipeline.addLast(new CommonEncoder(serializer, "\r\n"));
                             pipeline.addLast(new CommonDecoder());

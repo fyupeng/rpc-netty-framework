@@ -20,4 +20,7 @@ public class PropertiesConstants {
     public final static String REDIS_CLIENT_WAY = "cn.fyupeng.redis.client-way";
     public final static String REDIS_SERVER_ASYNC = "cn.fyupeng.redis.server-async";
 
+    public final static String NETTY_FRAME_LENGTH = "cn.fyupeng.netty.frame-length";
+    public final static int DEFAULT_NETTY_FRAME_LENGTH = 50000;
+
 }

@@ -2,6 +2,7 @@ package cn.fyupeng.net.netty.client;
 
 import cn.fyupeng.codec.CommonDecoder;
 import cn.fyupeng.codec.CommonEncoder;
+import cn.fyupeng.config.NettyConfiguration;
 import cn.fyupeng.exception.ConnectFailedException;
 import cn.fyupeng.exception.RpcException;
 import cn.fyupeng.serializer.CommonSerializer;
@@ -64,7 +65,7 @@ public class  NettyChannelProvider {
             @Override
             protected void initChannel(SocketChannel ch) throws Exception {
                     ChannelPipeline pipeline = ch.pipeline();
-                    pipeline.addLast(new DelimiterBasedFrameDecoder(1024, Unpooled.copiedBuffer("\r\n", CharsetUtil.UTF_8))).
+                    pipeline.addLast(new DelimiterBasedFrameDecoder(NettyConfiguration.getNettyFrameLength(), Unpooled.copiedBuffer("\r\n", CharsetUtil.UTF_8))).
                             //addLast(new IdleStateHandler(3, 5, 7, TimeUnit.SECONDS))
                             addLast(new CommonDecoder())
                             .addLast(new CommonEncoder(serializer, "\r\n"))
