@@ -913,6 +913,8 @@ Netty already provides a graceful shutdown, `bossGroup.shutdownGracefully().sync
 - [ [#2.2.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.6/pom) ]：Fix the issue of abnormal address parsing during service registration and publishing.
 
 - [ [#2.2.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.7/pom) ]：Supports flexible adjustment of Netty underlying frame length configuration.
+  
+- [ [#2.2.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.8/pom) ]：Optimize the issue of long parsing time for service discovery host numbers.
 
 
 ---- 
