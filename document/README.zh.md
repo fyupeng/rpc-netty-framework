@@ -184,6 +184,8 @@
 - [ [#2.2.6](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.6/pom) ]：修复服务注册发布时解析地址异常问题。
 
 - [ [#2.2.7](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.7/pom) ]：支持配置Netty底层帧长度灵活调整。
+- 
+- [ [#2.2.8](https://search.maven.org/artifact/cn.fyupeng/rpc-netty-framework/2.2.8/pom) ]：优化服务发现主机号解析耗时问题。
 
 
 ---- 
