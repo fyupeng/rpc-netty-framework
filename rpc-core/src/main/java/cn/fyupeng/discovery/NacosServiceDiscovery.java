@@ -47,7 +47,7 @@ public class NacosServiceDiscovery extends ServiceDiscovery {
             List<Instance> instances = NacosConfiguration.getAllInstance(serviceName);
             Instance instance = loadBalancer.selectService(instances);
             log.debug("lookupService: ip [{}], port [{}]",instance.getIp(), instance.getPort());
-            return new InetSocketAddress(instance.getIp(), instance.getPort());
+            return InetSocketAddress.createUnresolved(instance.getIp(),instance.getPort());
         } catch (NacosException e) {
             log.error("error occurred while fetching the service:{}",e.getMessage());
             throw new ObtainServiceException("error occurred while fetching the service Exception");
@@ -70,7 +70,7 @@ public class NacosServiceDiscovery extends ServiceDiscovery {
             List<Instance> instances = NacosConfiguration.getAllInstance(serviceName, groupName);
             Instance instance = loadBalancer.selectService(instances);
             log.debug("lookupService: ip [{}], port [{}]",instance.getIp(), instance.getPort());
-            return new InetSocketAddress(instance.getIp(), instance.getPort());
+            return InetSocketAddress.createUnresolved(instance.getIp(),instance.getPort());
         } catch (NacosException e) {
             log.error("error occurred while fetching the service: \n{}",e.getMessage());
             throw new ObtainServiceException("error occurred while fetching the service Exception");
